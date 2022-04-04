@@ -1,0 +1,11 @@
+numpy
+matplotlib
+tqdm
+scipy
+pytorch>=1.10.2
+torchvision # Otherwise issue with Pillow
+Pillow
+tensorflow
+numba
+sympy
+pot

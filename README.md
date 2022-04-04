@@ -1,2 +1,3 @@
-# FL_clients_heterogeneity
+# FL clients heterogeneity
 How to compute FL clients heterogeneity ?
+
