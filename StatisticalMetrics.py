@@ -13,6 +13,8 @@ class StatisticalMetrics:
         super().__init__()
         self.dataset_name = dataset_name
         self.nb_clients = nb_clients
+        self.metrics_folder = "pictures/" + dataset_name + "/metrics"
+        create_folder_if_not_existing(self.metrics_folder)
 
     def save_itself(self):
         create_folder_if_not_existing("pickle/{0}".format(self.dataset_name))
@@ -69,7 +71,7 @@ class StatisticalMetrics:
         axes[0].get_yaxis().set_visible(True)
         axes[0].set_ylabel("Client index")
 
-        plt.show()
+        plt.savefig('{0}/{1}.eps'.format(self.metrics_folder, "Y"), format='eps')
 
     def plot_X_metrics(self):
         fig = plt.figure()
@@ -97,4 +99,4 @@ class StatisticalMetrics:
         axes[0].get_yaxis().set_visible(True)
         axes[0].set_ylabel("Client index")
 
-        plt.show()
+        plt.savefig('{0}/{1}.eps'.format(self.metrics_folder, "X"), format='eps')
