@@ -9,3 +9,4 @@ tensorflow
 numba
 sympy
 pot
+scikit-learn
