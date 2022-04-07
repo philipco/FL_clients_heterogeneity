@@ -6,6 +6,6 @@ if __name__ == '__main__':
 
     DATASET_NAME = "mnist"
 
-    clients_network = load_data(DATASET_NAME, NB_CLIENTS, recompute=True)
+    clients_network = load_data(DATASET_NAME, NB_CLIENTS, recompute=False)
 
     clients_network.plot_TSNE()

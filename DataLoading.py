@@ -5,7 +5,7 @@ from torchvision import datasets
 from Client import Client, ClientsNetwork
 from PickleHandler import pickle_loader
 
-DIRICHLET_COEF = 0.7
+DIRICHLET_COEF = 0.5
 
 
 def dirichlet_split(data, labels, nb_clients):
@@ -40,6 +40,11 @@ def create_clients(nb_clients, data, labels):
 def load_data(dataset_name, nb_clients, recompute: bool = False):
     if not recompute:
         clients_network = pickle_loader("pickle/{0}/clients_network".format(dataset_name))
+        for client in clients_network.clients:
+            client.Y_distribution = client.compute_Y_distribution()
+
+        clients_network.average_client.Y_distribution = clients_network.average_client.compute_Y_distribution()
+        clients_network.compute_Y_given_X_distribution()
         # average_client = clients_network.average_client
         # clients = clients_network.clients
     else:
