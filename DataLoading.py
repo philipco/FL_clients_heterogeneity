@@ -55,8 +55,9 @@ def load_data(dataset_name, nb_clients, recompute: bool = False, iid: bool = Fal
         mnist_data = mnist_data.reshape(mnist_data.shape[0], mnist_data.shape[1] * mnist_data.shape[2])
         mnist_label = mnist.train_labels
 
-        # mnist_data = mnist_data[:5000]
-        # mnist_label = mnist_label[:5000]
+        print("LEN ======= ", len(mnist_data))
+        mnist_data = mnist_data[:50000]
+        mnist_label = mnist_label[:50000]
 
         nb_labels = len(np.unique(mnist_label))
 

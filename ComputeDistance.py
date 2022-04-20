@@ -80,92 +80,103 @@ def compute_metrics_on_Y(clients_network_iid: ClientsNetwork, clients_network_no
     return KL_distance_on_Y, TV_distance_on_Y
 
 
-def compute_metrics_on_X(clients, average_client: Client):
+def compute_metrics_on_X(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork):
     print("\n=== Compute metrics on X ===")
-    nb_clients = len(clients)
-
-    # Vector of EMD between client and the average.
-    EMD_to_average = np.zeros(nb_clients)
-
-    # Matrix of EAD between each clients
-    joint_EMD = np.zeros((nb_clients, nb_clients))
+    nb_clients = len(clients_network_iid.clients)
+    EM_distance_on_X = Distance(nb_clients)
 
     # Compute Earth Mover's distance
     print("Computing EMD with average clients ...")
     for i in tqdm(range(nb_clients)):
-        EMD_to_average[i] = compute_EM_distance(clients[i].X_lower_dim, average_client.X_lower_dim)
+        EM_distance_iid = compute_EM_distance(clients_network_iid.clients[i].X_lower_dim,
+                                              clients_network_iid.average_client.X_lower_dim)
+        EM_distance_non_iid = compute_EM_distance(clients_network_non_iid.clients[i].X_lower_dim,
+                                              clients_network_non_iid.average_client.X_lower_dim)
+        EM_distance_on_X.set_distance_to_average(i, EM_distance_iid, EM_distance_non_iid)
 
     print("Computing EMD between clients ...")
     for i in tqdm(range(nb_clients)):
         for j in range(i, nb_clients):
-            joint_EMD[i, j] = compute_EM_distance(clients[i].X_lower_dim, clients[j].X_lower_dim)
-            joint_EMD[j, i] = joint_EMD[i, j]
+            EM_distance_iid = compute_EM_distance(clients_network_iid.clients[i].X_lower_dim,
+                                                  clients_network_iid.clients[j].X_lower_dim)
+            EM_distance_non_iid = compute_EM_distance(clients_network_non_iid.clients[i].X_lower_dim,
+                                                      clients_network_non_iid.clients[j].X_lower_dim)
+            EM_distance_on_X.set_distance_one_to_one(i, j, EM_distance_iid, EM_distance_non_iid)
+            EM_distance_on_X.set_distance_one_to_one(j, i, EM_distance_iid, EM_distance_non_iid)
 
-    return EMD_to_average, joint_EMD
+    return EM_distance_on_X
 
 
-def compute_metrics_on_X_given_Y(clients, average_client):
+def compute_metrics_on_X_given_Y(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork):
     print("\n=== Compute metrics on X given Y ===")
-    nb_clients = len(clients)
-    nb_labels = average_client.nb_labels
-
-    # Vector of EMD between client and the average.
-    EMD_to_average = [np.zeros(nb_clients) for y in range(nb_labels)]
-
-    # Matrix of EAD between each clients
-    joint_EMD = [np.zeros((nb_clients, nb_clients)) for y in range(nb_labels)]
+    nb_clients = len(clients_network_iid.clients)
+    nb_labels = clients_network_non_iid.average_client.nb_labels
+    EM_distance_on_X_given_Y = [Distance(nb_clients) for x in range(nb_labels)]
 
     for y in range(nb_labels):
 
         # Compute Earth Mover's distance
         print("Computing EMD with average clients ...")
         for i in tqdm(range(nb_clients)):
-            EMD_to_average[y][i] = compute_EM_distance(clients[i].X_given_Y_distribution[y],
-                                               average_client.X_given_Y_distribution[y])
+            EM_distance_iid = compute_EM_distance(clients_network_iid.clients[i].X_given_Y_distribution[y],
+                                                  clients_network_iid.average_client.X_given_Y_distribution[y])
+            EM_distance_non_iid = compute_EM_distance(clients_network_non_iid.clients[i].X_given_Y_distribution[y],
+                                                      clients_network_non_iid.average_client.X_given_Y_distribution[y])
+            EM_distance_on_X_given_Y[y].set_distance_to_average(i, EM_distance_iid, EM_distance_non_iid)
 
         print("Computing EMD between clients ...")
         for i in tqdm(range(nb_clients)):
             for j in range(i, nb_clients):
-                joint_EMD[y][i, j] = compute_EM_distance(clients[i].X_given_Y_distribution[y],
-                                                 clients[j].X_given_Y_distribution[y])
-                joint_EMD[y][j, i] = joint_EMD[y][i, j]
+                EM_distance_iid = compute_EM_distance(clients_network_iid.clients[i].X_given_Y_distribution[y],
+                                                      clients_network_iid.clients[j].X_given_Y_distribution[y])
+                EM_distance_non_iid = compute_EM_distance(clients_network_non_iid.clients[i].X_given_Y_distribution[y],
+                                                      clients_network_non_iid.clients[j].X_given_Y_distribution[y])
+                EM_distance_on_X_given_Y[y].set_distance_one_to_one(i, j, EM_distance_iid, EM_distance_non_iid)
+                EM_distance_on_X_given_Y[y].set_distance_one_to_one(j, i, EM_distance_iid, EM_distance_non_iid)
 
-    return EMD_to_average, joint_EMD
+    return EM_distance_on_X_given_Y
 
 
-def compute_metrics_on_Y_given_X(clients, average_client):
+def compute_metrics_on_Y_given_X(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork):
     print("\n=== Compute metrics on Y given X ===")
-    nb_clients = len(clients)
+    nb_clients = len(clients_network_iid.clients)
 
-    # Vector of distance between client and the average.
-    KL_distance_to_average = [np.zeros(nb_clients) for x in range(NB_CLUSTER_ON_X)]
-    TV_distance_to_average = [np.zeros(nb_clients) for x in range(NB_CLUSTER_ON_X)]
+    KL_distance_on_Y = [Distance(nb_clients) for x in range(NB_CLUSTER_ON_X)]
+    TV_distance_on_Y = [Distance(nb_clients) for x in range(NB_CLUSTER_ON_X)]
 
-    # Matrix of distance between each clients
-    KL_joint_distance = [np.zeros((nb_clients, nb_clients)) for x in range(NB_CLUSTER_ON_X)]
-    TV_joint_distance = [np.zeros((nb_clients, nb_clients)) for x in range(NB_CLUSTER_ON_X)]
-
-    print("\n=== Compute metrics on X given Y ===")
     for x in tqdm(range(NB_CLUSTER_ON_X)):
-
         for i in range(nb_clients):
-            KL_distance_to_average[x][i] = compute_KL_distance(clients[i].Y_given_X_distribution[x],
-                                                               average_client.Y_given_X_distribution[x])
-            TV_distance_to_average[x][i] = compute_TV_distance(clients[i].Y_given_X_distribution[x],
-                                                               average_client.Y_given_X_distribution[x])
+            # Compute KL distance to average
+            KL_distance_iid = compute_KL_distance(clients_network_iid.clients[i].Y_given_X_distribution[x],
+                                                  clients_network_iid.average_client.Y_given_X_distribution[x])
+            KL_distance_non_iid = compute_KL_distance(clients_network_non_iid.clients[i].Y_given_X_distribution[x],
+                                                      clients_network_non_iid.average_client.Y_given_X_distribution[x])
+            KL_distance_on_Y[x].set_distance_to_average(i, KL_distance_iid, KL_distance_non_iid)
 
-        # Compute TV distance (symmetric matrix)
+            # Compute TV distance to average
+            TV_distance_iid = compute_TV_distance(clients_network_iid.clients[i].Y_given_X_distribution[x],
+                                                  clients_network_iid.average_client.Y_given_X_distribution[x])
+            TV_distance_non_iid = compute_TV_distance(clients_network_non_iid.clients[i].Y_given_X_distribution[x],
+                                                      clients_network_non_iid.average_client.Y_given_X_distribution[x])
+            TV_distance_on_Y[x].set_distance_to_average(i, TV_distance_iid, TV_distance_non_iid)
+
+        # Compute TV distance (symmetric matrix) one to one.
         for i in range(nb_clients):
-            for j in range(i, nb_clients):
-                TV_joint_distance[x][i, j] = compute_TV_distance(clients[i].Y_given_X_distribution[x],
-                                                                 clients[j].Y_given_X_distribution[x])
-                TV_joint_distance[x][j, i] = TV_joint_distance[x][i, j]
+            for j in range(i, nb_clients):  # TODO i+1
+                TV_distance_iid = compute_TV_distance(clients_network_iid.clients[i].Y_given_X_distribution[x],
+                                                      clients_network_iid.clients[j].Y_given_X_distribution[x])
+                TV_distance_non_iid = compute_TV_distance(clients_network_non_iid.clients[i].Y_given_X_distribution[x],
+                                                          clients_network_non_iid.clients[j].Y_given_X_distribution[x])
+                TV_distance_on_Y[x].set_distance_one_to_one(i, j, TV_distance_iid, TV_distance_non_iid)
+                TV_distance_on_Y[x].set_distance_one_to_one(j, i, TV_distance_iid, TV_distance_non_iid)
 
-        # Compute KL distance
+        # Compute KL distance one to one.
         for i in range(nb_clients):
             for j in range(nb_clients):
-                KL_joint_distance[x][i, j] = compute_KL_distance(clients[i].Y_given_X_distribution[x],
-                                                                 clients[j].Y_given_X_distribution[x])
+                KL_distance_iid = compute_KL_distance(clients_network_iid.clients[i].Y_given_X_distribution[x],
+                                                      clients_network_iid.clients[j].Y_given_X_distribution[x])
+                KL_distance_non_iid = compute_KL_distance(clients_network_non_iid.clients[i].Y_given_X_distribution[x],
+                                                          clients_network_non_iid.clients[j].Y_given_X_distribution[x])
+                KL_distance_on_Y[x].set_distance_one_to_one(i, j, KL_distance_iid, KL_distance_non_iid)
 
-    return KL_distance_to_average, TV_distance_to_average, KL_joint_distance, TV_joint_distance
-
+    return KL_distance_on_Y, TV_distance_on_Y
