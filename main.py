@@ -10,13 +10,13 @@ from tqdm import tqdm
 
 from Client import Client, ClientsNetwork
 from DataLoading import load_data
-from PickleHandler import pickle_loader
 from StatisticalMetrics import StatisticalMetrics
 
 DIRICHLET_COEF = 0.8
 NB_CLIENTS = 10
 
 NB_CLUSTER_ON_X = 5
+IID = True
 
 DATASET_NAME = "mnist"
 
@@ -33,7 +33,7 @@ def compute_KL_distance(distrib1, distrib2):
 def compute_TV_distance(distrib1, distrib2):
     assert len(distrib1) == len(distrib2), "TV: distributions are not of equal size."
     N = len(distrib1)
-    return np.sum([np.abs(distrib1[i] - distrib2[i]) for i in range(N)])
+    return 0.5 * np.sum([np.abs(distrib1[i] - distrib2[i]) for i in range(N)])
 
 
 def compute_EMD(distrib1, distrib2):
@@ -86,12 +86,12 @@ def compute_metrics_on_X(clients, average_client: Client):
     # Compute Earth Mover's distance
     print("Computing EMD with average clients ...")
     for i in tqdm(range(NB_CLIENTS)):
-        EMD_to_average[i] = compute_EMD(clients[i].X_TSNE, average_client.X_TSNE)
+        EMD_to_average[i] = compute_EMD(clients[i].X_lower_dim, average_client.X_lower_dim)
 
     print("Computing EMD between clients ...")
     for i in tqdm(range(NB_CLIENTS)):
         for j in range(i, NB_CLIENTS):
-            joint_EMD[i, j] = compute_EMD(clients[i].X_TSNE, clients[j].X_TSNE)
+            joint_EMD[i, j] = compute_EMD(clients[i].X_lower_dim, clients[j].X_lower_dim)
             joint_EMD[j, i] = joint_EMD[i, j]
 
     return EMD_to_average, joint_EMD
@@ -158,29 +158,29 @@ def compute_metrics_on_Y_given_X(clients, average_client):
 
 if __name__ == '__main__':
 
-    my_metrics = StatisticalMetrics(DATASET_NAME, NB_CLIENTS, NB_LABELS)
-    clients_network = load_data(DATASET_NAME, NB_CLIENTS, recompute=False)
+    my_metrics = StatisticalMetrics(DATASET_NAME, NB_CLIENTS, NB_LABELS, iid=IID)
+    clients_network = load_data(DATASET_NAME, NB_CLIENTS, recompute=False, iid=IID)
     clients = clients_network.clients
     average_client = clients_network.average_client
 
-    # KL_distance_to_average, TV_distance_to_average, KL_joint_distance, TV_joint_distance = compute_metrics_on_Y(clients, average_client)
-    # my_metrics.set_metrics_on_Y(KL_distance_to_average, TV_distance_to_average, KL_joint_distance, TV_joint_distance)
-    # my_metrics.save_itself()
-    # my_metrics.plot_Y_metrics([my_metrics.TV_distance_one_to_one, my_metrics.KL_distance_one_to_one,
-    #                            my_metrics.TV_distance_to_average, my_metrics.KL_distance_to_average], "Y")
-    #
+    KL_distance_to_average, TV_distance_to_average, KL_joint_distance, TV_joint_distance = compute_metrics_on_Y(clients, average_client)
+    my_metrics.set_metrics_on_Y(KL_distance_to_average, TV_distance_to_average, KL_joint_distance, TV_joint_distance)
+    my_metrics.save_itself()
+    my_metrics.plot_Y_metrics([my_metrics.TV_distance_one_to_one, my_metrics.KL_distance_one_to_one,
+                               my_metrics.TV_distance_to_average, my_metrics.KL_distance_to_average], "Y")
+
     EMD_to_average, joint_EMD = compute_metrics_on_X(clients, average_client)
     my_metrics.set_metrics_on_X(EMD_to_average, joint_EMD)
     my_metrics.save_itself()
-    my_metrics.plot_X_metrics([my_metrics.EMD_one_to_one, my_metrics.EMD_to_average], "X")
-    #
-    # EMD_by_Y_to_average, EMD_by_Y_one_to_one = compute_metrics_on_X_given_Y(clients, average_client)
-    # my_metrics.set_metrics_on_X_given_Y(EMD_by_Y_to_average, EMD_by_Y_one_to_one)
-    # my_metrics.save_itself()
-    # my_metrics.plot_X_given_Y_metrics()
+    my_metrics.plot_X_metrics([my_metrics.EMD_one_to_one, my_metrics.EMD_to_average], "X", "X")
 
-    # KL_distance_to_average, TV_distance_to_average, KL_joint_distance, TV_joint_distance = compute_metrics_on_Y_given_X(clients, average_client)
-    # my_metrics.set_metrics_on_Y_given_X(KL_distance_to_average, TV_distance_to_average, KL_joint_distance, TV_joint_distance)
-    # my_metrics.save_itself()
-    # my_metrics.plot_Y_given_X_metrics()
+    EMD_by_Y_to_average, EMD_by_Y_one_to_one = compute_metrics_on_X_given_Y(clients, average_client)
+    my_metrics.set_metrics_on_X_given_Y(EMD_by_Y_to_average, EMD_by_Y_one_to_one)
+    my_metrics.save_itself()
+    my_metrics.plot_X_given_Y_metrics()
+
+    KL_distance_to_average, TV_distance_to_average, KL_joint_distance, TV_joint_distance = compute_metrics_on_Y_given_X(clients, average_client)
+    my_metrics.set_metrics_on_Y_given_X(KL_distance_to_average, TV_distance_to_average, KL_joint_distance, TV_joint_distance)
+    my_metrics.save_itself()
+    my_metrics.plot_Y_given_X_metrics()
 
