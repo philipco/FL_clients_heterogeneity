@@ -5,7 +5,8 @@ import numpy as np
 import ot
 from tqdm import tqdm
 
-from Client import Client
+from Client import Client, ClientsNetwork
+from DistanceBetweenDistributions import Distance
 
 NB_CLUSTER_ON_X = 5
 
@@ -36,34 +37,47 @@ def compute_EM_distance(distrib1, distrib2):
     return ot.bregman.sinkhorn2(a, b, cost_matrix, reg=0.1)  # Wasserstein distance / EMD value
 
 
-def compute_metrics_on_Y(clients, average_client):
+def compute_metrics_on_Y(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork):
     print("\n=== Compute metrics on Y ===")
-    nb_clients = len(clients)
 
-    # Vector of distance between client and the average.
-    KL_distance_to_average = np.zeros(nb_clients)
-    TV_distance_to_average = np.zeros(nb_clients)
-
-    # Matrix of distance between each clients
-    KL_distance_one_to_one = np.zeros((nb_clients, nb_clients))
-    TV_distance_one_to_one = np.zeros((nb_clients, nb_clients))
+    nb_clients = len(clients_network_iid.clients)
+    KL_distance_on_Y, TV_distance_on_Y = Distance(nb_clients), Distance(nb_clients)
 
     for i in range(nb_clients):
-        KL_distance_to_average[i] = compute_KL_distance(clients[i].Y_distribution, average_client.Y_distribution)
-        TV_distance_to_average[i] = compute_TV_distance(clients[i].Y_distribution, average_client.Y_distribution)
+        # Compute KL distance to average
+        KL_distance_iid = compute_KL_distance(clients_network_iid.clients[i].Y_distribution,
+                                              clients_network_iid.average_client.Y_distribution)
+        KL_distance_non_iid = compute_KL_distance(clients_network_non_iid.clients[i].Y_distribution,
+                                                  clients_network_non_iid.average_client.Y_distribution)
+        KL_distance_on_Y.set_distance_to_average(i, KL_distance_iid, KL_distance_non_iid)
 
-    # Compute TV distance (symmetric matrix)
+        # Compute TV distance to average
+        TV_distance_iid = compute_TV_distance(clients_network_iid.clients[i].Y_distribution,
+                                              clients_network_iid.average_client.Y_distribution)
+        TV_distance_non_iid = compute_TV_distance(clients_network_non_iid.clients[i].Y_distribution,
+                                                  clients_network_non_iid.average_client.Y_distribution)
+        TV_distance_on_Y.set_distance_to_average(i, TV_distance_iid, TV_distance_non_iid)
+
+    # Compute TV distance (symmetric matrix) one to one.
     for i in range(nb_clients):
-        for j in range(i, nb_clients):
-            TV_distance_one_to_one[i, j] = compute_TV_distance(clients[i].Y_distribution, clients[j].Y_distribution)
-            TV_distance_one_to_one[j, i] = TV_distance_one_to_one[i, j]
+        for j in range(i, nb_clients): # TODO i+1
+            TV_distance_iid = compute_TV_distance(clients_network_iid.clients[i].Y_distribution,
+                                                  clients_network_iid.clients[j].Y_distribution)
+            TV_distance_non_iid = compute_TV_distance(clients_network_non_iid.clients[i].Y_distribution,
+                                                      clients_network_non_iid.clients[j].Y_distribution)
+            TV_distance_on_Y.set_distance_one_to_one(i, j, TV_distance_iid, TV_distance_non_iid)
+            TV_distance_on_Y.set_distance_one_to_one(j, i, TV_distance_iid, TV_distance_non_iid)
 
-    # Compute KL distance
+    # Compute KL distance one to one.
     for i in range(nb_clients):
         for j in range(nb_clients):
-            KL_distance_one_to_one[i, j] = compute_KL_distance(clients[i].Y_distribution, clients[j].Y_distribution)
+            KL_distance_iid = compute_KL_distance(clients_network_iid.clients[i].Y_distribution,
+                                                  clients_network_iid.clients[j].Y_distribution)
+            KL_distance_non_iid = compute_KL_distance(clients_network_non_iid.clients[i].Y_distribution,
+                                                      clients_network_non_iid.clients[j].Y_distribution)
+            KL_distance_on_Y.set_distance_one_to_one(i, j, KL_distance_iid, KL_distance_non_iid)
 
-    return KL_distance_to_average, TV_distance_to_average, KL_distance_one_to_one, TV_distance_one_to_one
+    return KL_distance_on_Y, TV_distance_on_Y
 
 
 def compute_metrics_on_X(clients, average_client: Client):
