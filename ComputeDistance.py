@@ -32,7 +32,7 @@ def compute_EM_distance(distrib1, distrib2):
     try:
         cost_matrix /= cost_matrix.max()
     except:
-        return math.nan # When distribution1 is empty.
+        return 2 #math.nan # When distribution1 is empty.
     a, b = ot.unif(len(distrib1)), ot.unif(len(distrib2))  # uniform distribution on samples
     return ot.bregman.sinkhorn2(a, b, cost_matrix, reg=0.1)  # Wasserstein distance / EMD value
 
@@ -126,7 +126,7 @@ def compute_metrics_on_X_given_Y(clients_network_iid: ClientsNetwork, clients_ne
 
         print("Computing EMD between clients ...")
         for i in tqdm(range(nb_clients)):
-            for j in range(i, nb_clients):
+            for j in range(i+1, nb_clients):
                 EM_distance_iid = compute_EM_distance(clients_network_iid.clients[i].X_given_Y_distribution[y],
                                                       clients_network_iid.clients[j].X_given_Y_distribution[y])
                 EM_distance_non_iid = compute_EM_distance(clients_network_non_iid.clients[i].X_given_Y_distribution[y],
@@ -162,7 +162,7 @@ def compute_metrics_on_Y_given_X(clients_network_iid: ClientsNetwork, clients_ne
 
         # Compute TV distance (symmetric matrix) one to one.
         for i in range(nb_clients):
-            for j in range(i, nb_clients):  # TODO i+1
+            for j in range(i+1, nb_clients):
                 TV_distance_iid = compute_TV_distance(clients_network_iid.clients[i].Y_given_X_distribution[x],
                                                       clients_network_iid.clients[j].Y_given_X_distribution[x])
                 TV_distance_non_iid = compute_TV_distance(clients_network_non_iid.clients[i].Y_given_X_distribution[x],
