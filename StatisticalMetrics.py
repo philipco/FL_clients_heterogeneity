@@ -137,19 +137,19 @@ class StatisticalMetrics:
         axes = [ax1, ax2, ax3, ax4]
 
         iid_distance_one_to_one, non_iid_distance_one_to_one = distance.get_avg_distance_one_to_one()
-        iid_distance_to_average, non_iid_distance_to_average = distance.get_avg_distance_to_average()
+        iid_distance_to_centralized, non_iid_distance_to_centralized = distance.get_avg_distance_to_centralized()
         matrix_to_plot = [iid_distance_one_to_one, non_iid_distance_one_to_one,
-                          iid_distance_to_average, non_iid_distance_to_average]
+                          iid_distance_to_centralized, non_iid_distance_to_centralized]
 
         one_to_one_min = min(min(iid_distance_one_to_one.flatten()),
                              min(non_iid_distance_one_to_one.flatten()))
         one_to_one_max = max(max(iid_distance_one_to_one.flatten()),
                              max(non_iid_distance_one_to_one.flatten()))
 
-        avg_min = min(min(iid_distance_to_average.flatten()),
-                      min(non_iid_distance_to_average.flatten()))
-        avg_max = max(max(iid_distance_to_average.flatten()),
-                      max(non_iid_distance_to_average.flatten()))
+        avg_min = min(min(iid_distance_to_centralized.flatten()),
+                      min(non_iid_distance_to_centralized.flatten()))
+        avg_max = max(max(iid_distance_to_centralized.flatten()),
+                      max(non_iid_distance_to_centralized.flatten()))
 
         for i in range(len(matrix_to_plot)):
             axes[i].get_yaxis().set_visible(False)

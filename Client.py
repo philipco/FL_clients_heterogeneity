@@ -87,14 +87,14 @@ class Client:
 
 class ClientsNetwork:
 
-    def __init__(self, dataset_name: str, clients: List[Client], average_client: Client) -> None:
+    def __init__(self, dataset_name: str, clients: List[Client], centralized_client: Client) -> None:
         super().__init__()
         self.dataset_name = dataset_name
         self.clients = clients
-        self.average_client = average_client
+        self.centralized = centralized_client
         self.nb_clients = len(clients)
 
-        # Now that all clients, and also the average client are ready, we can compute the Y|X distribution.
+        # Now that all clients, and also the centralized client are ready, we can compute the Y|X distribution.
         # To compute Y given X distribution, we need to first compute X cluster on complete distribution.
         self.compute_Y_given_X_distribution()
         self.save_itself()
@@ -108,7 +108,7 @@ class ClientsNetwork:
         create_folder_if_not_existing(tsne_folder)
         for i in range(self.nb_clients):
             scatter_plot(self.clients[i].X_TSNE, self.clients[i].Y, self.clients[i].idx, tsne_folder)
-        scatter_plot(self.average_client.X_TSNE, self.average_client.Y, self.average_client.idx, tsne_folder)
+        scatter_plot(self.centralized.X_TSNE, self.centralized.Y, self.centralized.idx, tsne_folder)
 
     def clusterize_X_distribution_for_each_client(self) -> None:
         X_cluster_predictor = self.train_X_cluster_predictor()
@@ -116,12 +116,12 @@ class ClientsNetwork:
             client.compute_X_clusters(X_cluster_predictor)
 
     def train_X_cluster_predictor(self) -> KMeans:
-        X_cluster_predictor = KMeans(n_clusters=NB_CLUSTER_ON_X, random_state=0).fit(self.average_client.X_lower_dim)
-        self.average_client.set_X_clusters(X_cluster_predictor.labels_)
+        X_cluster_predictor = KMeans(n_clusters=NB_CLUSTER_ON_X, random_state=0).fit(self.centralized.X_lower_dim)
+        self.centralized.set_X_clusters(X_cluster_predictor.labels_)
         return X_cluster_predictor
 
     def compute_Y_given_X_distribution(self) -> None:
         self.clusterize_X_distribution_for_each_client()
-        self.average_client.set_Y_given_X_distribution()
+        self.centralized.set_Y_given_X_distribution()
         for client in self.clients:
             client.set_Y_given_X_distribution()

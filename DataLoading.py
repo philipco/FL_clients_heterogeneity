@@ -68,10 +68,10 @@ def load_data(dataset_name: str, nb_clients: int, recompute: bool = False, iid: 
 
         nb_labels = len(np.unique(mnist_label))
 
-        average_client = Client("central", mnist_data, mnist_label, nb_labels)
+        central_client = Client("central", mnist_data, mnist_label, nb_labels)
         clients = create_clients(nb_clients, mnist_data, mnist_label, iid=iid)
 
-        clients_network = ClientsNetwork(dataset_name, clients, average_client)
+        clients_network = ClientsNetwork(dataset_name, clients, central_client)
 
     return clients_network
 

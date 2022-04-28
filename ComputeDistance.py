@@ -46,19 +46,19 @@ def compute_metrics_on_Y(clients_network_iid: ClientsNetwork, clients_network_no
     KL_distance_on_Y, TV_distance_on_Y = Distance(nb_clients), Distance(nb_clients)
 
     for i in range(nb_clients):
-        # Compute KL distance to average
+        # Compute KL distance to centralized dataset
         KL_distance_iid = compute_KL_distance(clients_network_iid.clients[i].Y_distribution,
-                                              clients_network_iid.average_client.Y_distribution)
+                                              clients_network_iid.centralized.Y_distribution)
         KL_distance_non_iid = compute_KL_distance(clients_network_non_iid.clients[i].Y_distribution,
-                                                  clients_network_non_iid.average_client.Y_distribution)
-        KL_distance_on_Y.set_distance_to_average(i, KL_distance_iid, KL_distance_non_iid)
+                                                  clients_network_non_iid.centralized.Y_distribution)
+        KL_distance_on_Y.set_distance_to_centralized(i, KL_distance_iid, KL_distance_non_iid)
 
-        # Compute TV distance to average
+        # Compute TV distance to centralized dataset
         TV_distance_iid = compute_TV_distance(clients_network_iid.clients[i].Y_distribution,
-                                              clients_network_iid.average_client.Y_distribution)
+                                              clients_network_iid.centralized.Y_distribution)
         TV_distance_non_iid = compute_TV_distance(clients_network_non_iid.clients[i].Y_distribution,
-                                                  clients_network_non_iid.average_client.Y_distribution)
-        TV_distance_on_Y.set_distance_to_average(i, TV_distance_iid, TV_distance_non_iid)
+                                                  clients_network_non_iid.centralized.Y_distribution)
+        TV_distance_on_Y.set_distance_to_centralized(i, TV_distance_iid, TV_distance_non_iid)
 
     # Compute TV distance (symmetric matrix) one to one.
     for i in range(nb_clients):
@@ -88,13 +88,13 @@ def compute_metrics_on_X(clients_network_iid: ClientsNetwork, clients_network_no
     EM_distance_on_X = Distance(nb_clients)
 
     # Compute Earth Mover's distance
-    print("Computing EMD with average clients ...")
+    print("Computing EMD with centralized client ...")
     for i in tqdm(range(nb_clients)):
         EM_distance_iid = compute_EM_distance(clients_network_iid.clients[i].X_lower_dim,
-                                              clients_network_iid.average_client.X_lower_dim)
+                                              clients_network_iid.centralized.X_lower_dim)
         EM_distance_non_iid = compute_EM_distance(clients_network_non_iid.clients[i].X_lower_dim,
-                                              clients_network_non_iid.average_client.X_lower_dim)
-        EM_distance_on_X.set_distance_to_average(i, EM_distance_iid, EM_distance_non_iid)
+                                                  clients_network_non_iid.centralized.X_lower_dim)
+        EM_distance_on_X.set_distance_to_centralized(i, EM_distance_iid, EM_distance_non_iid)
 
     print("Computing EMD between clients ...")
     for i in tqdm(range(nb_clients)):
@@ -112,19 +112,19 @@ def compute_metrics_on_X(clients_network_iid: ClientsNetwork, clients_network_no
 def compute_metrics_on_X_given_Y(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork) -> Distance:
     print("\n=== Compute metrics on X given Y ===")
     nb_clients = len(clients_network_iid.clients)
-    nb_labels = clients_network_non_iid.average_client.nb_labels
+    nb_labels = clients_network_non_iid.centralized.nb_labels
     EM_distance_on_X_given_Y = [Distance(nb_clients) for x in range(nb_labels)]
 
-    print("Computing EMD with average clients, and between clients ...")
+    print("Computing EMD with centralize client, and between clients ...")
     for y in tqdm(range(nb_labels)):
 
         # Compute Earth Mover's distance
         for i in range(nb_clients):
             EM_distance_iid = compute_EM_distance(clients_network_iid.clients[i].X_given_Y_distribution[y],
-                                                  clients_network_iid.average_client.X_given_Y_distribution[y])
+                                                  clients_network_iid.centralized.X_given_Y_distribution[y])
             EM_distance_non_iid = compute_EM_distance(clients_network_non_iid.clients[i].X_given_Y_distribution[y],
-                                                      clients_network_non_iid.average_client.X_given_Y_distribution[y])
-            EM_distance_on_X_given_Y[y].set_distance_to_average(i, EM_distance_iid, EM_distance_non_iid)
+                                                      clients_network_non_iid.centralized.X_given_Y_distribution[y])
+            EM_distance_on_X_given_Y[y].set_distance_to_centralized(i, EM_distance_iid, EM_distance_non_iid)
 
         for i in range(nb_clients):
             for j in range(i+1, nb_clients):
@@ -147,19 +147,19 @@ def compute_metrics_on_Y_given_X(clients_network_iid: ClientsNetwork, clients_ne
 
     for x in tqdm(range(NB_CLUSTER_ON_X)):
         for i in range(nb_clients):
-            # Compute KL distance to average
+            # Compute KL distance to centralized dataset
             KL_distance_iid = compute_KL_distance(clients_network_iid.clients[i].Y_given_X_distribution[x],
-                                                  clients_network_iid.average_client.Y_given_X_distribution[x])
+                                                  clients_network_iid.centralized.Y_given_X_distribution[x])
             KL_distance_non_iid = compute_KL_distance(clients_network_non_iid.clients[i].Y_given_X_distribution[x],
-                                                      clients_network_non_iid.average_client.Y_given_X_distribution[x])
-            KL_distance_on_Y[x].set_distance_to_average(i, KL_distance_iid, KL_distance_non_iid)
+                                                      clients_network_non_iid.centralized.Y_given_X_distribution[x])
+            KL_distance_on_Y[x].set_distance_to_centralized(i, KL_distance_iid, KL_distance_non_iid)
 
-            # Compute TV distance to average
+            # Compute TV distance to centralized dataset
             TV_distance_iid = compute_TV_distance(clients_network_iid.clients[i].Y_given_X_distribution[x],
-                                                  clients_network_iid.average_client.Y_given_X_distribution[x])
+                                                  clients_network_iid.centralized.Y_given_X_distribution[x])
             TV_distance_non_iid = compute_TV_distance(clients_network_non_iid.clients[i].Y_given_X_distribution[x],
-                                                      clients_network_non_iid.average_client.Y_given_X_distribution[x])
-            TV_distance_on_Y[x].set_distance_to_average(i, TV_distance_iid, TV_distance_non_iid)
+                                                      clients_network_non_iid.centralized.Y_given_X_distribution[x])
+            TV_distance_on_Y[x].set_distance_to_centralized(i, TV_distance_iid, TV_distance_non_iid)
 
         # Compute TV distance (symmetric matrix) one to one.
         for i in range(nb_clients):
