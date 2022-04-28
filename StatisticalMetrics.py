@@ -23,9 +23,10 @@ from Utilities import create_folder_if_not_existing
 TITLES = ["IID", "NON-IID"]
 COLORS = ["tab:blue", "tab:orange"]
 
+
 class StatisticalMetrics:
 
-    def __init__(self, dataset_name, nb_clients, nb_labels, iid: bool = False) -> None:
+    def __init__(self, dataset_name: str, nb_clients: int, nb_labels: int, iid: bool = False) -> None:
         super().__init__()
         self.dataset_name = dataset_name
         if iid:
@@ -38,13 +39,13 @@ class StatisticalMetrics:
         self.KL_distance_on_Y = DistanceForSeveralRuns()
         self.TV_distance_on_Y = DistanceForSeveralRuns()
 
-        # Metrics on Y given X
-        # self.KL_distance_on_Y_given_X = []
-        # self.TV_distance_on_Y_given_X = []
+        ############## Metrics on Y | X ##############
+        self.KL_distance_on_Y_given_X = [DistanceForSeveralRuns()  for i in range(NB_CLUSTER_ON_X)]
+        self.TV_distance_on_Y_given_X = [DistanceForSeveralRuns() for i in range(NB_CLUSTER_ON_X)]
 
         create_folder_if_not_existing(self.metrics_folder)
 
-    def save_itself(self):
+    def save_itself(self) -> None:
         create_folder_if_not_existing("pickle/{0}".format(self.dataset_name))
         pickle_saver(self, "pickle/{0}/stat_metrics".format(self.dataset_name))
 
@@ -60,19 +61,14 @@ class StatisticalMetrics:
         ############## Metrics on X | Y ##############
         self.EM_distance_on_X_given_Y = EM_distance_on_X_given_Y
 
-    def set_metrics_on_Y_given_X(self, KL_distance_on_Y_given_X: List[Distance], TV_distance_on_Y_given_X: List[Distance]) -> None:
-        ############## Metrics on Y | X ##############
-        self.KL_distance_on_Y_given_X = KL_distance_on_Y_given_X
-        self.TV_distance_on_Y_given_X = TV_distance_on_Y_given_X
-        # self.KL_distance_on_Y_given_X.append(KL_distance_on_Y_given_X)
-        # self.TV_distance_on_Y_given_X.append(TV_distance_on_Y_given_X)
+    def set_metrics_on_Y_given_X(self, KL_distance_on_Y_given_X: List[Distance],
+                                 TV_distance_on_Y_given_X: List[Distance]) -> None:
+        for x in range(NB_CLUSTER_ON_X):
+            self.KL_distance_on_Y_given_X[x].add_distance(KL_distance_on_Y_given_X[x])
+            self.TV_distance_on_Y_given_X[x].add_distance(TV_distance_on_Y_given_X[x])
 
-    # def get_metrics_on_Y_given_X(self):
-    #     KL_distance_on_Y_given_X =
-    #     TV_distance_on_Y_given_X =
-    #     return KL_distance_on_Y_given_X, TV_distance_on_Y_given_X
-
-    def plot_histogram(self, distance: DistanceForSeveralRuns, suptitle: str, plot_name: str, symmetric_matrix: bool = False) -> None:
+    def plot_histogram(self, distance: DistanceForSeveralRuns, suptitle: str, plot_name: str,
+                       symmetric_matrix: bool = False) -> None:
         fig, ax = plt.subplots()
 
         distrib_iid, distrib_non_iid = distance.get_concatenate_distance_one_to_one(symmetric_matrix)
@@ -89,22 +85,23 @@ class StatisticalMetrics:
         ax.legend(loc='upper right')
         plt.savefig('{0}/{1}_hist.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
 
-    def plot_grouped_histogram(self, distances: List[Distance], suptitle, plot_name, label: str):
+    def plot_grouped_histogram(self, distances: List[DistanceForSeveralRuns], suptitle, plot_name, label: str,
+                               symmetric_matrix: bool = False) -> None:
 
         legend_line = [Line2D([0], [0], color="black", lw=1, label=label)]
         xmax, ymax = 0, 0
 
         fig, axes = plt.subplots(1, 2, sharey=True, sharex=True)
         for distance in distances:
-            # n = len(distance.iid_distance_one_to_one)
-            y_iid, bin_edges_iid = np.histogram(remove_diagonal(distance.iid_distance_one_to_one),
-                                                bins=100)
+
+            distrib_iid, distrib_non_iid = distance.get_concatenate_distance_one_to_one(symmetric_matrix)
+
+            y_iid, bin_edges_iid = np.histogram(distrib_iid, bins=100)
             bincenters = 0.5 * (bin_edges_iid[1:] + bin_edges_iid[:-1])
             axes[0].plot(bincenters, y_iid, '-')
             xmax = max(xmax, max(bincenters))
             ymax = max(ymax, max(y_iid))
-            y_non_iid, bin_edges_non_iid = np.histogram(remove_diagonal(distance.non_iid_distance_one_to_one),
-                                                        bins=100)
+            y_non_iid, bin_edges_non_iid = np.histogram(distrib_non_iid, bins=100)
             bincenters = 0.5 * (bin_edges_non_iid[1:] + bin_edges_non_iid[:-1])
             xmax = max(xmax, max(bincenters))
             ymax = max(ymax, max(y_non_iid))
@@ -164,7 +161,7 @@ class StatisticalMetrics:
         plt.suptitle(suptitle, fontsize ='xx-large', weight ='extra bold')
         plt.savefig('{0}/{1}.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
 
-    def plot_Y_metrics(self):
+    def plot_Y_metrics(self) -> None:
         plot_name = "Y"
         self.plot_distance(self.KL_distance_on_Y, r"KL distance for ${0}$".format(plot_name), "{0}_KL".format(plot_name))
         self.plot_distance(self.TV_distance_on_Y, r"TV distance for ${0}$".format(plot_name), "{0}_TV".format(plot_name))
@@ -173,14 +170,14 @@ class StatisticalMetrics:
         self.plot_histogram(self.TV_distance_on_Y, r"TV distance for ${0}$".format(plot_name),
                             "{0}_TV".format(plot_name), symmetric_matrix = True)
 
-    def plot_X_metrics(self):
+    def plot_X_metrics(self) -> None:
         plot_name = "X"
         self.plot_distance(self.EM_distance_on_X, r"Sinkhorn distance for ${0}$".format(plot_name),
                            "{0}".format(plot_name))
         self.plot_histogram(self.EM_distance_on_X, r"Sinkhorn distance for ${0}$".format(plot_name),
                             "{0}".format(plot_name))
 
-    def plot_X_given_Y_metrics(self):
+    def plot_X_given_Y_metrics(self) -> None:
         for y in range(self.nb_labels):
             plot_name = r"X|Y={0}".format(y)
             self.plot_distance(self.EM_distance_on_X_given_Y[y], r"Sinkhorn distance for ${0}$".format(plot_name),
@@ -189,7 +186,7 @@ class StatisticalMetrics:
                                 "{0}".format(plot_name))
         self.plot_grouped_histogram(self.EM_distance_on_X_given_Y, r"Sinkhorn distance for $X|Y$", "X|Y", "$X|Y=k \in \mathbb{N}$")
 
-    def plot_Y_given_X_metrics(self):
+    def plot_Y_given_X_metrics(self) -> None:
         for x in range(NB_CLUSTER_ON_X):
             plot_name = r"Y|X={0}".format(x)
             self.plot_distance(self.KL_distance_on_Y_given_X[x], r"KL distance for ${0}$".format(plot_name),
@@ -199,10 +196,11 @@ class StatisticalMetrics:
             self.plot_histogram(self.KL_distance_on_Y_given_X[x], r"KL distance for ${0}$".format(plot_name),
                                 "{0}_KL".format(plot_name))
             self.plot_histogram(self.TV_distance_on_Y_given_X[x], r"TV distance for ${0}$".format(plot_name),
-                                "{0}_TV".format(plot_name))
+                                "{0}_TV".format(plot_name), symmetric_matrix = True)
 
-        self.plot_grouped_histogram(self.KL_distance_on_Y_given_X, r"KL distance for $Y|X$", "Y|X_KL", "$Y|X=k \in \mathbb{N}$")
-        self.plot_grouped_histogram(self.TV_distance_on_Y_given_X, r"TV distance for $Y|X$", "Y|X_TV",
+        self.plot_grouped_histogram(self.KL_distance_on_Y_given_X, r"KL distance for $Y|X$", "Y|X_KL",
                                     "$Y|X=k \in \mathbb{N}$")
+        self.plot_grouped_histogram(self.TV_distance_on_Y_given_X, r"TV distance for $Y|X$", "Y|X_TV",
+                                    "$Y|X=k \in \mathbb{N}$", symmetric_matrix=True)
 
 

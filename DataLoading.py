@@ -16,7 +16,6 @@ def dirichlet_split(data, labels, nb_clients, dirichlet_coef):
     Y = [[] for i in range(nb_clients)]
     for idx_label in range(nb_labels):
         proportions = np.random.dirichlet(np.repeat(dirichlet_coef, nb_clients))
-        print("Proportions for label {0}: {1}".format(idx_label, proportions))
         assert round(proportions.sum()) == 1, "The sum of proportion is not equal to 1."
         last_idx = 0
         N = len(labels[labels == idx_label])
@@ -58,6 +57,7 @@ def load_data(dataset_name, nb_clients, recompute: bool = False, iid: bool = Fal
         for client in clients_network.clients:
             client.Y_distribution = client.compute_Y_distribution()
     else:
+        print("Regenerating clients.")
         mnist = datasets.MNIST(root='../DATASETS', train=True, download=True, transform=None)
         mnist_data = mnist.train_data.numpy()
         mnist_data = mnist_data.reshape(mnist_data.shape[0], mnist_data.shape[1] * mnist_data.shape[2])
