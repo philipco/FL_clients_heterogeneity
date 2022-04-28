@@ -11,3 +11,4 @@ sympy
 pot
 scikit-learn
 seaborn
+psutil

@@ -1,8 +1,8 @@
 """Created by Constantin Philippenko, 5th April 2022."""
 
 import os
-
 from pathlib import Path
+import psutil
 
 
 def get_project_root() -> str:
@@ -24,3 +24,11 @@ def file_exist(filename: str):
 
 def remove_file(filename: str):
     os.remove(filename)
+
+
+def print_mem_usage(info = None):
+    if info:
+        print(info)
+    process = psutil.Process(os.getpid())
+    mem = process.memory_info().rss * 10**-9 # Memory in Gb.
+    print("Memory usage: {0:1.2f}Gb".format(mem))

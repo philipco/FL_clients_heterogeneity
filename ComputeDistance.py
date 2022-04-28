@@ -5,8 +5,8 @@ import numpy as np
 import ot
 from tqdm import tqdm
 
-from Client import Client, ClientsNetwork
-from DistanceBetweenDistributions import Distance
+from Client import ClientsNetwork
+from Distance import Distance
 
 NB_CLUSTER_ON_X = 5
 
@@ -29,10 +29,11 @@ def compute_TV_distance(distrib1, distrib2):
 def compute_EM_distance(distrib1, distrib2):
     """Earth's mover."""
     cost_matrix = ot.dist(distrib1, distrib2)
-    try:
-        cost_matrix /= cost_matrix.max()
-    except:
-        return 2 #math.nan # When distribution1 is empty.
+    assert len(distrib1) >= 1 and len(distrib2) >= 1, "Distributions must not be empty."
+    cost_matrix /= cost_matrix.max()
+    # Sinkhorn is much faster than ot.emd2.
+    # ot.emd2 throws a warning on precision.
+    # TODO : what is the best choice of regularization ?
     a, b = ot.unif(len(distrib1)), ot.unif(len(distrib2))  # uniform distribution on samples
     return ot.bregman.sinkhorn2(a, b, cost_matrix, reg=0.1)  # Wasserstein distance / EMD value
 
