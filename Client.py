@@ -13,7 +13,6 @@ import seaborn as sns
 from PickleHandler import pickle_saver, pickle_loader
 from Utilities import create_folder_if_not_existing
 
-NB_POINTS_TSNE = -1
 NB_CLUSTER_ON_X = 5
 NB_COMPONENTS = 5
 
@@ -78,11 +77,11 @@ class Client:
     def __init__(self, idx, X, Y, nb_labels) -> None:
         super().__init__()
         self.idx = idx
-        self.X = X[:NB_POINTS_TSNE]
+        self.X = X
         # self.X_TSNE = self.compute_TSNE(self.X)
         self.X_PCA = self.compute_PCA(self.X)
         self.X_lower_dim = self.X_PCA
-        self.Y = Y[:NB_POINTS_TSNE]
+        self.Y = Y
         self.nb_labels = nb_labels
 
         # Distributions that we need to compare between clients.
@@ -108,7 +107,9 @@ class Client:
         return np.array([(self.Y == y).sum() / len(self.Y) for y in range(self.nb_labels)])
 
     def compute_X_given_Y_distribution(self):
-        return [self.X_lower_dim[self.Y == y] for y in range(self.nb_labels)]
+        distrib = [self.X_lower_dim[self.Y == y] for y in range(self.nb_labels)]
+        assert [len(x) > 0 for x in distrib] == [True for x in distrib], "X|Y, some labels are missing."
+        return distrib
 
     def set_Y_given_X(self):
         self.Y_given_X = [self.Y[self.X_clusters == x] for x in range(NB_CLUSTER_ON_X)]

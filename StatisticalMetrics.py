@@ -35,6 +35,9 @@ class StatisticalMetrics:
         self.nb_labels = nb_labels
         self.metrics_folder = "pictures/" + self.dataset_name + "/metrics"
 
+        ############## Metrics on X ##############
+        self.EM_distance_on_X = DistanceForSeveralRuns()
+
         ############## Metrics on Y ##############
         self.KL_distance_on_Y = DistanceForSeveralRuns()
         self.TV_distance_on_Y = DistanceForSeveralRuns()
@@ -42,6 +45,9 @@ class StatisticalMetrics:
         ############## Metrics on Y | X ##############
         self.KL_distance_on_Y_given_X = [DistanceForSeveralRuns()  for i in range(NB_CLUSTER_ON_X)]
         self.TV_distance_on_Y_given_X = [DistanceForSeveralRuns() for i in range(NB_CLUSTER_ON_X)]
+
+        ############## Metrics on X | Y ##############
+        self.EM_distance_on_X_given_Y = [DistanceForSeveralRuns()  for i in range(self.nb_labels)]
 
         create_folder_if_not_existing(self.metrics_folder)
 
@@ -54,12 +60,11 @@ class StatisticalMetrics:
         self.TV_distance_on_Y.add_distance(TV_distance_on_Y)
 
     def set_metrics_on_X(self, EM_distance_on_X: Distance) -> None:
-        ############## Metrics on X ##############
-        self.EM_distance_on_X = EM_distance_on_X
+        self.EM_distance_on_X.add_distance(EM_distance_on_X)
 
     def set_metrics_on_X_given_Y(self, EM_distance_on_X_given_Y: List[Distance]) -> None:
-        ############## Metrics on X | Y ##############
-        self.EM_distance_on_X_given_Y = EM_distance_on_X_given_Y
+        for y in range(self.nb_labels):
+            self.EM_distance_on_X_given_Y[y].add_distance(EM_distance_on_X_given_Y[y])
 
     def set_metrics_on_Y_given_X(self, KL_distance_on_Y_given_X: List[Distance],
                                  TV_distance_on_Y_given_X: List[Distance]) -> None:
@@ -175,7 +180,7 @@ class StatisticalMetrics:
         self.plot_distance(self.EM_distance_on_X, r"Sinkhorn distance for ${0}$".format(plot_name),
                            "{0}".format(plot_name))
         self.plot_histogram(self.EM_distance_on_X, r"Sinkhorn distance for ${0}$".format(plot_name),
-                            "{0}".format(plot_name))
+                            "{0}".format(plot_name), symmetric_matrix=True)
 
     def plot_X_given_Y_metrics(self) -> None:
         for y in range(self.nb_labels):
@@ -183,8 +188,9 @@ class StatisticalMetrics:
             self.plot_distance(self.EM_distance_on_X_given_Y[y], r"Sinkhorn distance for ${0}$".format(plot_name),
                                "{0}".format(plot_name))
             self.plot_histogram(self.EM_distance_on_X_given_Y[y], r"Sinkhorn distance for ${0}$".format(plot_name),
-                                "{0}".format(plot_name))
-        self.plot_grouped_histogram(self.EM_distance_on_X_given_Y, r"Sinkhorn distance for $X|Y$", "X|Y", "$X|Y=k \in \mathbb{N}$")
+                                "{0}".format(plot_name), symmetric_matrix=True)
+        self.plot_grouped_histogram(self.EM_distance_on_X_given_Y, r"Sinkhorn distance for $X|Y$", "X|Y",
+                                    "$X|Y=k \in \mathbb{N}$", symmetric_matrix=True)
 
     def plot_Y_given_X_metrics(self) -> None:
         for x in range(NB_CLUSTER_ON_X):

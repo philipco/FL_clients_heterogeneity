@@ -114,19 +114,18 @@ def compute_metrics_on_X_given_Y(clients_network_iid: ClientsNetwork, clients_ne
     nb_labels = clients_network_non_iid.average_client.nb_labels
     EM_distance_on_X_given_Y = [Distance(nb_clients) for x in range(nb_labels)]
 
-    for y in range(nb_labels):
+    print("Computing EMD with average clients, and between clients ...")
+    for y in tqdm(range(nb_labels)):
 
         # Compute Earth Mover's distance
-        print("Computing EMD with average clients ...")
-        for i in tqdm(range(nb_clients)):
+        for i in range(nb_clients):
             EM_distance_iid = compute_EM_distance(clients_network_iid.clients[i].X_given_Y_distribution[y],
                                                   clients_network_iid.average_client.X_given_Y_distribution[y])
             EM_distance_non_iid = compute_EM_distance(clients_network_non_iid.clients[i].X_given_Y_distribution[y],
                                                       clients_network_non_iid.average_client.X_given_Y_distribution[y])
             EM_distance_on_X_given_Y[y].set_distance_to_average(i, EM_distance_iid, EM_distance_non_iid)
 
-        print("Computing EMD between clients ...")
-        for i in tqdm(range(nb_clients)):
+        for i in range(nb_clients):
             for j in range(i+1, nb_clients):
                 EM_distance_iid = compute_EM_distance(clients_network_iid.clients[i].X_given_Y_distribution[y],
                                                       clients_network_iid.clients[j].X_given_Y_distribution[y])

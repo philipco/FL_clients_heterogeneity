@@ -43,6 +43,7 @@ def create_clients(nb_clients, data, labels, iid: bool = False):
         X, Y = dirichlet_split(data, labels, nb_clients, dirichlet_coef=10**5)
     else:
         X, Y = dirichlet_split(data, labels, nb_clients, dirichlet_coef=DIRICHLET_COEF)
+    assert [len(np.unique(y)) for y in Y] == [len(np.unique(labels)) for y in Y], "Some labels are not represented on some clients."
     for i in range(nb_clients):
         clients.append(Client(i, X[i], Y[i], nb_labels))
     return clients
