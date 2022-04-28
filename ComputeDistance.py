@@ -11,7 +11,7 @@ from Distance import Distance
 NB_CLUSTER_ON_X = 5
 
 
-def compute_KL_distance(distrib1, distrib2):
+def compute_KL_distance(distrib1: np.ndarray, distrib2: np.ndarray) -> float:
     """Kullback-Leibler."""
     assert len(distrib1) == len(distrib2), "KL: distributions are not of equal size."
     EPS = 10e-6
@@ -19,14 +19,14 @@ def compute_KL_distance(distrib1, distrib2):
     return np.sum([distrib1[i] * np.log((distrib1[i] / (distrib2[i]+ EPS)) + EPS) for i in range(N)])
 
 
-def compute_TV_distance(distrib1, distrib2):
+def compute_TV_distance(distrib1: np.ndarray, distrib2: np.ndarray) -> float:
     """Total Variation."""
     assert len(distrib1) == len(distrib2), "TV: distributions are not of equal size."
     N = len(distrib1)
     return 0.5 * np.sum([np.abs(distrib1[i] - distrib2[i]) for i in range(N)])
 
 
-def compute_EM_distance(distrib1, distrib2):
+def compute_EM_distance(distrib1: np.ndarray, distrib2: np.ndarray) -> float:
     """Earth's mover."""
     cost_matrix = ot.dist(distrib1, distrib2)
     assert len(distrib1) >= 1 and len(distrib2) >= 1, "Distributions must not be empty."
@@ -35,10 +35,11 @@ def compute_EM_distance(distrib1, distrib2):
     # ot.emd2 throws a warning on precision.
     # TODO : what is the best choice of regularization ?
     a, b = ot.unif(len(distrib1)), ot.unif(len(distrib2))  # uniform distribution on samples
-    return ot.bregman.sinkhorn2(a, b, cost_matrix, reg=0.1)  # Wasserstein distance / EMD value
+    return ot.bregman.sinkhorn2(a, b, cost_matrix, reg=0.1)[0]  # Wasserstein distance / EMD value
 
 
-def compute_metrics_on_Y(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork):
+def compute_metrics_on_Y(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork) \
+        -> [Distance, Distance]:
     print("\n=== Compute metrics on Y ===")
 
     nb_clients = len(clients_network_iid.clients)
@@ -81,7 +82,7 @@ def compute_metrics_on_Y(clients_network_iid: ClientsNetwork, clients_network_no
     return KL_distance_on_Y, TV_distance_on_Y
 
 
-def compute_metrics_on_X(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork):
+def compute_metrics_on_X(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork) -> Distance:
     print("\n=== Compute metrics on X ===")
     nb_clients = len(clients_network_iid.clients)
     EM_distance_on_X = Distance(nb_clients)
@@ -108,7 +109,7 @@ def compute_metrics_on_X(clients_network_iid: ClientsNetwork, clients_network_no
     return EM_distance_on_X
 
 
-def compute_metrics_on_X_given_Y(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork):
+def compute_metrics_on_X_given_Y(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork) -> Distance:
     print("\n=== Compute metrics on X given Y ===")
     nb_clients = len(clients_network_iid.clients)
     nb_labels = clients_network_non_iid.average_client.nb_labels
@@ -137,7 +138,7 @@ def compute_metrics_on_X_given_Y(clients_network_iid: ClientsNetwork, clients_ne
     return EM_distance_on_X_given_Y
 
 
-def compute_metrics_on_Y_given_X(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork):
+def compute_metrics_on_Y_given_X(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork) -> [Distance, Distance]:
     print("\n=== Compute metrics on Y given X ===")
     nb_clients = len(clients_network_iid.clients)
 

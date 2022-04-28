@@ -1,11 +1,11 @@
 """Created by Constantin Philippenko, 5th April 2022."""
 import numpy as np
+import seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import matplotlib
-from typing import List
 
 matplotlib.rcParams.update({
     "pgf.texsystem": "pdflatex",
@@ -62,12 +62,12 @@ class StatisticalMetrics:
     def set_metrics_on_X(self, EM_distance_on_X: Distance) -> None:
         self.EM_distance_on_X.add_distance(EM_distance_on_X)
 
-    def set_metrics_on_X_given_Y(self, EM_distance_on_X_given_Y: List[Distance]) -> None:
+    def set_metrics_on_X_given_Y(self, EM_distance_on_X_given_Y: list[Distance]) -> None:
         for y in range(self.nb_labels):
             self.EM_distance_on_X_given_Y[y].add_distance(EM_distance_on_X_given_Y[y])
 
-    def set_metrics_on_Y_given_X(self, KL_distance_on_Y_given_X: List[Distance],
-                                 TV_distance_on_Y_given_X: List[Distance]) -> None:
+    def set_metrics_on_Y_given_X(self, KL_distance_on_Y_given_X: list[Distance],
+                                 TV_distance_on_Y_given_X: list[Distance]) -> None:
         for x in range(NB_CLUSTER_ON_X):
             self.KL_distance_on_Y_given_X[x].add_distance(KL_distance_on_Y_given_X[x])
             self.TV_distance_on_Y_given_X[x].add_distance(TV_distance_on_Y_given_X[x])
@@ -83,14 +83,16 @@ class StatisticalMetrics:
         except:
             print(distrib_iid)
             print(distrib_non_iid)
-        ax.hist(distrib_iid, bins, edgecolor="black", label="iid", color=COLORS[0])
-        ax.hist(distrib_non_iid, bins, edgecolor="black", label="non-iid", color=COLORS[1])
+        sns.histplot(distrib_iid, kde = True, label="iid", color=COLORS[0], ax=ax)
+        sns.histplot(distrib_non_iid, kde = True, label="non-iid", color=COLORS[1], ax=ax)
+        # ax.hist(distrib_iid, bins, edgecolor="black", label="iid", color=COLORS[0])
+        # ax.hist(distrib_non_iid, bins, edgecolor="black", label="non-iid", color=COLORS[1])
         ax.set_title(suptitle, fontsize='xx-large', weight='extra bold')
         ax.set_ylabel("Value's occurrences")
         ax.legend(loc='upper right')
         plt.savefig('{0}/{1}_hist.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
 
-    def plot_grouped_histogram(self, distances: List[DistanceForSeveralRuns], suptitle, plot_name, label: str,
+    def plot_grouped_histogram(self, distances: list[DistanceForSeveralRuns], suptitle: str, plot_name: str, label: str,
                                symmetric_matrix: bool = False) -> None:
 
         legend_line = [Line2D([0], [0], color="black", lw=1, label=label)]
@@ -118,11 +120,11 @@ class StatisticalMetrics:
         axes[0].set_ylabel("Value's occurrences")
         plt.xlim(0 - xmax*0.05, xmax*1.1)
         plt.ylim(0, ymax*1.1)
-        fig.supxlabel("Sinkhorn distance")
+        fig.supxlabel("Distance")
         plt.suptitle(suptitle, fontsize ='xx-large', weight ='extra bold')
         plt.savefig('{0}/{1}_grouped_hist.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
 
-    def plot_distance(self, distance: DistanceForSeveralRuns, suptitle, plot_name) -> None:
+    def plot_distance(self, distance: DistanceForSeveralRuns, suptitle: str, plot_name: str) -> None:
 
         ax1 = plt.subplot2grid((self.nb_clients + 1, 2), (0, 0), colspan=1, rowspan=self.nb_clients)
         ax2 = plt.subplot2grid((self.nb_clients + 1, 2), (0, 1), colspan=1, rowspan=self.nb_clients)

@@ -10,7 +10,8 @@ from PickleHandler import pickle_loader
 DIRICHLET_COEF = 0.5
 
 
-def dirichlet_split(data, labels, nb_clients, dirichlet_coef):
+def dirichlet_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, dirichlet_coef: float) \
+        -> [list[np.ndarray], list[np.ndarray]]:
     nb_labels = len(np.unique(labels)) # Here data is not yet split. Thus nb_labels is correct.
     X = [[] for i in range(nb_clients)]
     Y = [[] for i in range(nb_clients)]
@@ -36,7 +37,7 @@ def dirichlet_split(data, labels, nb_clients, dirichlet_coef):
     return X, Y
 
 
-def create_clients(nb_clients, data, labels, iid: bool = False):
+def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, iid: bool = False) -> list[Client]:
     clients = []
     nb_labels = len(np.unique(labels)) # Here data is not yet split. Thus nb_labels is correct.
     if iid:
@@ -49,7 +50,7 @@ def create_clients(nb_clients, data, labels, iid: bool = False):
     return clients
 
 
-def load_data(dataset_name, nb_clients, recompute: bool = False, iid: bool = False):
+def load_data(dataset_name: str, nb_clients: int, recompute: bool = False, iid: bool = False) -> ClientsNetwork:
     if iid:
         dataset_name = "{0}-iid".format(dataset_name)
 
@@ -62,7 +63,7 @@ def load_data(dataset_name, nb_clients, recompute: bool = False, iid: bool = Fal
         mnist = datasets.MNIST(root='../DATASETS', train=True, download=True, transform=None)
         mnist_data = mnist.train_data.numpy()
         mnist_data = mnist_data.reshape(mnist_data.shape[0], mnist_data.shape[1] * mnist_data.shape[2])
-        mnist_label = mnist.train_labels
+        mnist_label = mnist.train_labels.numpy()
 
         nb_labels = len(np.unique(mnist_label))
 
