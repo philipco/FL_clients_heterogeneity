@@ -1,4 +1,5 @@
 """Created by Constantin Philippenko, 4th April 2022."""
+import random
 
 import numpy as np
 from torchvision import datasets
@@ -23,6 +24,13 @@ def dirichlet_split(data, labels, nb_clients, dirichlet_coef):
             X[idx_client].append(data[labels == idx_label][last_idx:last_idx + int(proportions[idx_client] * N)])
             Y[idx_client].append(labels[labels == idx_label][last_idx:last_idx + int(proportions[idx_client] * N)])
             last_idx += int(proportions[idx_client] * N)
+
+            # If the client hasn't receive this kind of label we add at least one !
+            if len(X[idx_client][-1]) == 0:
+                random_idx = random.randint(0,len(data[labels == idx_label]) - 1)
+                X[idx_client][-1] = data[labels == idx_label][random_idx:random_idx+1]
+                Y[idx_client][-1] = labels[labels == idx_label][random_idx:random_idx+1]
+
     for idx_client in range(nb_clients):
         X[idx_client] = np.concatenate((X[idx_client]))
         Y[idx_client] = np.concatenate(Y[idx_client])
@@ -54,9 +62,6 @@ def load_data(dataset_name, nb_clients, recompute: bool = False, iid: bool = Fal
         mnist_data = mnist.train_data.numpy()
         mnist_data = mnist_data.reshape(mnist_data.shape[0], mnist_data.shape[1] * mnist_data.shape[2])
         mnist_label = mnist.train_labels
-
-        # mnist_data = mnist_data[:5000]
-        # mnist_label = mnist_label[:5000]
 
         nb_labels = len(np.unique(mnist_label))
 
