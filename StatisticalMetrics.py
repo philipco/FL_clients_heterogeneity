@@ -1,4 +1,6 @@
 """Created by Constantin Philippenko, 5th April 2022."""
+from typing import List
+
 import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
@@ -62,12 +64,12 @@ class StatisticalMetrics:
     def set_metrics_on_X(self, EM_distance_on_X: Distance) -> None:
         self.EM_distance_on_X.add_distance(EM_distance_on_X)
 
-    def set_metrics_on_X_given_Y(self, EM_distance_on_X_given_Y: list[Distance]) -> None:
+    def set_metrics_on_X_given_Y(self, EM_distance_on_X_given_Y: List[Distance]) -> None:
         for y in range(self.nb_labels):
             self.EM_distance_on_X_given_Y[y].add_distance(EM_distance_on_X_given_Y[y])
 
-    def set_metrics_on_Y_given_X(self, KL_distance_on_Y_given_X: list[Distance],
-                                 TV_distance_on_Y_given_X: list[Distance]) -> None:
+    def set_metrics_on_Y_given_X(self, KL_distance_on_Y_given_X: List[Distance],
+                                 TV_distance_on_Y_given_X: List[Distance]) -> None:
         for x in range(NB_CLUSTER_ON_X):
             self.KL_distance_on_Y_given_X[x].add_distance(KL_distance_on_Y_given_X[x])
             self.TV_distance_on_Y_given_X[x].add_distance(TV_distance_on_Y_given_X[x])
@@ -83,43 +85,44 @@ class StatisticalMetrics:
         except:
             print(distrib_iid)
             print(distrib_non_iid)
-        sns.histplot(distrib_iid, kde = True, label="iid", color=COLORS[0], ax=ax)
-        sns.histplot(distrib_non_iid, kde = True, label="non-iid", color=COLORS[1], ax=ax)
-        # ax.hist(distrib_iid, bins, edgecolor="black", label="iid", color=COLORS[0])
-        # ax.hist(distrib_non_iid, bins, edgecolor="black", label="non-iid", color=COLORS[1])
+        # sns.kdeplot(distrib_iid, label="iid", color=COLORS[0], ax=ax)
+        # sns.kdeplot(distrib_non_iid, label="non-iid", color=COLORS[1], ax=ax)
+        ax.hist(distrib_iid, bins, edgecolor="black", label="iid", color=COLORS[0])
+        ax.hist(distrib_non_iid, bins, edgecolor="black", label="non-iid", color=COLORS[1])
         ax.set_title(suptitle, fontsize='xx-large', weight='extra bold')
         ax.set_ylabel("Value's occurrences")
         ax.legend(loc='upper right')
         plt.savefig('{0}/{1}_hist.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
 
-    def plot_grouped_histogram(self, distances: list[DistanceForSeveralRuns], suptitle: str, plot_name: str, label: str,
+    def plot_grouped_histogram(self, distances: List[DistanceForSeveralRuns], suptitle: str, plot_name: str, label: str,
                                symmetric_matrix: bool = False) -> None:
 
-        legend_line = [Line2D([0], [0], color="black", lw=1, label=label)]
-        xmax, ymax = 0, 0
+        # legend_line = [Line2D([0], [0], color="black", lw=1, label=label)]
+        # xmax, ymax = 0, 0
 
         fig, axes = plt.subplots(1, 2, sharey=True, sharex=True)
-        for distance in distances:
+        for idx in range(len(distances)):
 
-            distrib_iid, distrib_non_iid = distance.get_concatenate_distance_one_to_one(symmetric_matrix)
+            distrib_iid, distrib_non_iid = distances[idx].get_concatenate_distance_one_to_one(symmetric_matrix)
 
-            y_iid, bin_edges_iid = np.histogram(distrib_iid, bins=100)
-            bincenters = 0.5 * (bin_edges_iid[1:] + bin_edges_iid[:-1])
-            axes[0].plot(bincenters, y_iid, '-')
-            xmax = max(xmax, max(bincenters))
-            ymax = max(ymax, max(y_iid))
-            y_non_iid, bin_edges_non_iid = np.histogram(distrib_non_iid, bins=100)
-            bincenters = 0.5 * (bin_edges_non_iid[1:] + bin_edges_non_iid[:-1])
-            xmax = max(xmax, max(bincenters))
-            ymax = max(ymax, max(y_non_iid))
-            axes[1].plot(bincenters, y_non_iid, '-')
+            # y_iid, bin_edges_iid = np.histogram(distrib_iid, bins="sturges")
+            # bincenters = 0.5 * (bin_edges_iid[1:] + bin_edges_iid[:-1])
+            sns.kdeplot(distrib_iid, label="{0}{1}".format(label, idx), ax=axes[0])
+            # axes[0].plot(bincenters, y_iid, '-')
+            # xmax = max(xmax, max(bincenters))
+            # ymax = max(ymax, max(y_iid))
+            # y_non_iid, bin_edges_non_iid = np.histogram(distrib_non_iid, bins=100)
+            # bincenters = 0.5 * (bin_edges_non_iid[1:] + bin_edges_non_iid[:-1])
+            # xmax = max(xmax, max(bincenters))
+            # ymax = max(ymax, max(y_non_iid))
+            sns.kdeplot(distrib_non_iid, label="{0}{1}".format(label, idx), ax=axes[1])
         axes[0].set_title(label=TITLES[0])
         axes[1].set_title(label=TITLES[1])
-        axes[0].legend(handles=legend_line, loc='upper left')
-        axes[1].legend(handles=legend_line, loc='upper left')
-        axes[0].set_ylabel("Value's occurrences")
-        plt.xlim(0 - xmax*0.05, xmax*1.1)
-        plt.ylim(0, ymax*1.1)
+        axes[0].legend(loc='best', fontsize = 5)
+        axes[1].legend(loc='best', fontsize = 5)
+        axes[0].set_ylabel("Density")
+        # plt.xlim(0 - xmax*0.05, xmax*1.1)
+        # plt.ylim(0, ymax*1.1)
         fig.supxlabel("Distance")
         plt.suptitle(suptitle, fontsize ='xx-large', weight ='extra bold')
         plt.savefig('{0}/{1}_grouped_hist.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
@@ -192,7 +195,7 @@ class StatisticalMetrics:
             self.plot_histogram(self.EM_distance_on_X_given_Y[y], r"Sinkhorn distance for ${0}$".format(plot_name),
                                 "{0}".format(plot_name), symmetric_matrix=True)
         self.plot_grouped_histogram(self.EM_distance_on_X_given_Y, r"Sinkhorn distance for $X|Y$", "X|Y",
-                                    "$X|Y=k \in \mathbb{N}$", symmetric_matrix=True)
+                                    "$X|Y=$", symmetric_matrix=True)
 
     def plot_Y_given_X_metrics(self) -> None:
         for x in range(NB_CLUSTER_ON_X):
@@ -207,8 +210,8 @@ class StatisticalMetrics:
                                 "{0}_TV".format(plot_name), symmetric_matrix = True)
 
         self.plot_grouped_histogram(self.KL_distance_on_Y_given_X, r"KL distance for $Y|X$", "Y|X_KL",
-                                    "$Y|X=k \in \mathbb{N}$")
+                                    "$Y|X=$")
         self.plot_grouped_histogram(self.TV_distance_on_Y_given_X, r"TV distance for $Y|X$", "Y|X_TV",
-                                    "$Y|X=k \in \mathbb{N}$", symmetric_matrix=True)
+                                    "$Y|X=$", symmetric_matrix=True)
 
 

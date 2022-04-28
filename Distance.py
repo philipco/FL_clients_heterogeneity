@@ -33,17 +33,17 @@ class DistanceForSeveralRuns:
         self.distance_for_various_run.append(distance)
         self.number_of_run += 1
 
-    def get_avg_distance_to_average(self):#distances: list[Distance]):
+    def get_avg_distance_to_average(self):#distances: List[Distance]):
         iid = np.mean([d.iid_distance_to_average for d in self.distance_for_various_run], axis=0)
         non_iid = np.mean([d.non_iid_distance_to_average for d in self.distance_for_various_run], axis=0)
         return iid, non_iid
 
-    def get_avg_distance_one_to_one(self):#distances: list[Distance]):
+    def get_avg_distance_one_to_one(self):#distances: List[Distance]):
         iid = np.mean([d.iid_distance_one_to_one for d in self.distance_for_various_run], axis=0)
         non_iid = np.mean([d.non_iid_distance_one_to_one for d in self.distance_for_various_run], axis=0)
         return iid, non_iid
 
-    def get_concatenate_distance_one_to_one(self, symmetric_matrix: bool = False): #distances: list[Distance]) -> [np.array, np.array]:
+    def get_concatenate_distance_one_to_one(self, symmetric_matrix: bool = False): #distances: List[Distance]) -> [np.array, np.array]:
         iid = np.concatenate([remove_diagonal(d.iid_distance_one_to_one, symmetric_matrix) for d in self.distance_for_various_run], axis=0)
         non_iid = np.concatenate([remove_diagonal(d.non_iid_distance_one_to_one, symmetric_matrix) for d in self.distance_for_various_run],axis=0)
         return iid, non_iid

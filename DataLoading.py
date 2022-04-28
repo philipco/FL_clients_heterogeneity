@@ -1,5 +1,6 @@
 """Created by Constantin Philippenko, 4th April 2022."""
 import random
+from typing import List
 
 import numpy as np
 from torchvision import datasets
@@ -11,7 +12,7 @@ DIRICHLET_COEF = 0.5
 
 
 def dirichlet_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, dirichlet_coef: float) \
-        -> [list[np.ndarray], list[np.ndarray]]:
+        -> [List[np.ndarray], List[np.ndarray]]:
     nb_labels = len(np.unique(labels)) # Here data is not yet split. Thus nb_labels is correct.
     X = [[] for i in range(nb_clients)]
     Y = [[] for i in range(nb_clients)]
@@ -37,7 +38,7 @@ def dirichlet_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, diric
     return X, Y
 
 
-def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, iid: bool = False) -> list[Client]:
+def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, iid: bool = False) -> List[Client]:
     clients = []
     nb_labels = len(np.unique(labels)) # Here data is not yet split. Thus nb_labels is correct.
     if iid:
@@ -70,7 +71,7 @@ def load_data(dataset_name: str, nb_clients: int, recompute: bool = False, iid: 
         average_client = Client("central", mnist_data, mnist_label, nb_labels)
         clients = create_clients(nb_clients, mnist_data, mnist_label, iid=iid)
 
-        clients_network = ClientsNetwork(dataset_name, clients, average_client, nb_labels)
+        clients_network = ClientsNetwork(dataset_name, clients, average_client)
 
     return clients_network
 

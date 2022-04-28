@@ -9,6 +9,7 @@ from sklearn.manifold import TSNE
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import scale, StandardScaler
 import seaborn as sns
+from typing import List
 
 from PickleHandler import pickle_saver, pickle_loader
 from Utilities import create_folder_if_not_existing
@@ -86,7 +87,7 @@ class Client:
 
 class ClientsNetwork:
 
-    def __init__(self, dataset_name: str, clients: list[Client], average_client: Client, nb_labels: int) -> None:
+    def __init__(self, dataset_name: str, clients: List[Client], average_client: Client) -> None:
         super().__init__()
         self.dataset_name = dataset_name
         self.clients = clients
