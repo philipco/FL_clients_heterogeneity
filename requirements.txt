@@ -1,5 +1,5 @@
 numpy
-matplotlib
+matplotlib>=3.4
 tqdm
 scipy
 pytorch>=1.10.2
