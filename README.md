@@ -1,8 +1,10 @@
 # FL clients heterogeneity
 
+Repository to explore and quantify the heterogeneity in cross-silo federated learing.
+
+
 ## Overview
 
-Repository to explore and quantify the heterogeneity in cross-silo federated learing.
 There seem to be at least two questions of interest:
 
 1. How to measure heterogeneity between silos within a dataset.
@@ -20,15 +22,16 @@ The metrics are systematically computed for:
 
 Main classes:
 
-1. Client. Attributes: the dataset and its projection, the label, the distribution X, Y, X|Y and Y|X.
+1. Client. Attributes: the dataset and its projection, the label, the distributions X, Y, X|Y and Y|X.
 2. ClientsNetwork. Attributes: all clients, the centralized client.
 3. Distance. Save the distance between clients and with the central client fo the iid and non-iid case.
 4. DistanceForSeveralRuns. Attributes: list of distance computed with different dataset splits.
-5. StatisticalMetrics. Attributes: the distances computed over several runs for each kinf od distribution.
+5. StatisticalMetrics. Attributes: the distances computed over several runs for each kind of distribution.
 
-## Installatin
+## Installation
 
 ``git clone https://github.com/philipco/structured_noise.git``
+
 ``conda create -c conda-forge --name FL_heter_env --file requirements.txt python=3.7``
 
 
@@ -36,7 +39,9 @@ Main classes:
 ## Contribution
 
 Create a new branch : ``git checkout -b features/branch_name`` and implement all your modification on this branch. 
-When the feature is ready, create a pull request on Github API, review the code, squash commits and merge on the master brach.
+When the feature is ready, create a pull request on Github API, review the code, squash commits and merge on the master branch.
+
+To run the code on a new dataset, just complete the function ``get_dataset`` in ``DataLoading.py``.
 
 ## Maintainers
 

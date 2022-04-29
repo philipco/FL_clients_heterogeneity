@@ -5,8 +5,8 @@ from typing import List
 import numpy as np
 from torchvision import datasets
 
-from Client import Client, ClientsNetwork
-from PickleHandler import pickle_loader
+from src.Client import Client, ClientsNetwork
+from src.PickleHandler import pickle_loader
 
 DIRICHLET_COEF = 0.5
 
@@ -51,9 +51,26 @@ def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, iid: b
     return clients
 
 
+def get_dataset(dataset_name: str) -> [np.ndarray, np.ndarray]:
+
+    if dataset_name == "mnist":
+        mnist = datasets.MNIST(root='../../DATASETS', train=True, download=True, transform=None)
+        mnist_data = mnist.train_data.numpy()
+        mnist_data = mnist_data.reshape(mnist_data.shape[0], mnist_data.shape[1] * mnist_data.shape[2])
+        mnist_label = mnist.train_labels.numpy()
+        return mnist_data, mnist_label
+
+    elif dataset_name == "fashion_mnist":
+        mnist = datasets.FashionMNIST(root='../../DATASETS', train=True, download=True, transform=None)
+        mnist_data = mnist.train_data.numpy()
+        mnist_data = mnist_data.reshape(mnist_data.shape[0], mnist_data.shape[1] * mnist_data.shape[2])
+        mnist_label = mnist.train_labels.numpy()
+        return mnist_data, mnist_label
+    print(dataset_name)
+    raise ValueError("The dataset is unknown.")
+
+
 def load_data(dataset_name: str, nb_clients: int, recompute: bool = False, iid: bool = False) -> ClientsNetwork:
-    if iid:
-        dataset_name = "{0}-iid".format(dataset_name)
 
     if not recompute:
         clients_network = pickle_loader("pickle/{0}/clients_network".format(dataset_name))
@@ -61,15 +78,13 @@ def load_data(dataset_name: str, nb_clients: int, recompute: bool = False, iid: 
             client.Y_distribution = client.compute_Y_distribution()
     else:
         print("Regenerating clients.")
-        mnist = datasets.MNIST(root='../DATASETS', train=True, download=True, transform=None)
-        mnist_data = mnist.train_data.numpy()
-        mnist_data = mnist_data.reshape(mnist_data.shape[0], mnist_data.shape[1] * mnist_data.shape[2])
-        mnist_label = mnist.train_labels.numpy()
 
-        nb_labels = len(np.unique(mnist_label))
+        data, labels = get_dataset(dataset_name)
 
-        central_client = Client("central", mnist_data, mnist_label, nb_labels)
-        clients = create_clients(nb_clients, mnist_data, mnist_label, iid=iid)
+        nb_labels = len(np.unique(labels))
+
+        central_client = Client("central", data, labels, nb_labels)
+        clients = create_clients(nb_clients, data, labels, iid=iid)
 
         clients_network = ClientsNetwork(dataset_name, clients, central_client)
 

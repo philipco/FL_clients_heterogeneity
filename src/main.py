@@ -1,21 +1,22 @@
 """Created by Constantin Philippenko, 5th April 2022."""
 
-from ComputeDistance import *
-from DataLoading import load_data
-from StatisticalMetrics import StatisticalMetrics
-from Utilities import print_mem_usage
+from src.ComputeDistance import *
+from src.DataLoading import load_data
+from src.StatisticalMetrics import StatisticalMetrics
+from src.Utilities import print_mem_usage
 
 NB_CLIENTS = 10
 
-DATASET_NAME = "mnist"
+DATASET_NAME = "fashion_mnist"
 
 NB_LABELS = 10
-NB_RUNS = 6
+NB_RUNS = 1
 
 
 if __name__ == '__main__':
 
     my_metrics = StatisticalMetrics(DATASET_NAME, NB_CLIENTS, NB_LABELS)
+    my_metrics.plot_X_metrics()
 
     for i in range(NB_RUNS):
         print_mem_usage("RUN {0}/{1}".format(i+1, NB_RUNS))
@@ -25,8 +26,8 @@ if __name__ == '__main__':
         non_iid_clients_network = load_data(DATASET_NAME, NB_CLIENTS, recompute=True, iid=False)
 
         # ########## Compute metrics on X ##########
-        EM_distance_on_X = compute_metrics_on_X(iid_clients_network, non_iid_clients_network)
-        my_metrics.set_metrics_on_X(EM_distance_on_X)
+        # EM_distance_on_X = compute_metrics_on_X(iid_clients_network, non_iid_clients_network)
+        # my_metrics.set_metrics_on_X(EM_distance_on_X)
 
         ########## Compute metrics on Y ##########
         KL_distance_on_Y, TV_distance_on_Y = compute_metrics_on_Y(iid_clients_network, non_iid_clients_network)
