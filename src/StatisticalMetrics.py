@@ -4,7 +4,6 @@ from typing import List
 import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
-from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import matplotlib
@@ -17,10 +16,10 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-from Client import NB_CLUSTER_ON_X
-from Distance import Distance, remove_diagonal, DistanceForSeveralRuns
-from PickleHandler import pickle_saver
-from Utilities import create_folder_if_not_existing
+from src.Client import NB_CLUSTER_ON_X
+from src.Distance import Distance, DistanceForSeveralRuns
+from src.PickleHandler import pickle_saver
+from src.Utilities import create_folder_if_not_existing
 
 TITLES = ["IID", "NON-IID"]
 COLORS = ["tab:blue", "tab:orange"]
@@ -76,6 +75,8 @@ class StatisticalMetrics:
 
     def plot_histogram(self, distance: DistanceForSeveralRuns, suptitle: str, plot_name: str,
                        symmetric_matrix: bool = False) -> None:
+
+        if distance.is_empty(): return
         fig, ax = plt.subplots()
 
         distrib_iid, distrib_non_iid = distance.get_concatenate_distance_one_to_one(symmetric_matrix)
@@ -97,6 +98,8 @@ class StatisticalMetrics:
     def plot_grouped_histogram(self, distances: List[DistanceForSeveralRuns], suptitle: str, plot_name: str, label: str,
                                symmetric_matrix: bool = False) -> None:
 
+        if distances[0].is_empty(): return
+
         # legend_line = [Line2D([0], [0], color="black", lw=1, label=label)]
         # xmax, ymax = 0, 0
 
@@ -107,7 +110,7 @@ class StatisticalMetrics:
 
             # y_iid, bin_edges_iid = np.histogram(distrib_iid, bins="sturges")
             # bincenters = 0.5 * (bin_edges_iid[1:] + bin_edges_iid[:-1])
-            sns.kdeplot(distrib_iid, label="{0}{1}".format(label, idx), ax=axes[0])
+            sns.kdeplot(distrib_iid, label="{0}{1}".format(label, idx), ax=axes[0], clip=(0.0, 1.0))
             # axes[0].plot(bincenters, y_iid, '-')
             # xmax = max(xmax, max(bincenters))
             # ymax = max(ymax, max(y_iid))
@@ -115,7 +118,7 @@ class StatisticalMetrics:
             # bincenters = 0.5 * (bin_edges_non_iid[1:] + bin_edges_non_iid[:-1])
             # xmax = max(xmax, max(bincenters))
             # ymax = max(ymax, max(y_non_iid))
-            sns.kdeplot(distrib_non_iid, label="{0}{1}".format(label, idx), ax=axes[1])
+            sns.kdeplot(distrib_non_iid, label="{0}{1}".format(label, idx), ax=axes[1], clip=(0.0, 1.0))
         axes[0].set_title(label=TITLES[0])
         axes[1].set_title(label=TITLES[1])
         axes[0].legend(loc='best', fontsize = 5)
@@ -128,6 +131,8 @@ class StatisticalMetrics:
         plt.savefig('{0}/{1}_grouped_hist.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
 
     def plot_distance(self, distance: DistanceForSeveralRuns, suptitle: str, plot_name: str) -> None:
+
+        if distance.is_empty(): return
 
         ax1 = plt.subplot2grid((self.nb_clients + 1, 2), (0, 0), colspan=1, rowspan=self.nb_clients)
         ax2 = plt.subplot2grid((self.nb_clients + 1, 2), (0, 1), colspan=1, rowspan=self.nb_clients)

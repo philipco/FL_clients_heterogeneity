@@ -1,6 +1,7 @@
 """Created by Constantin Philippenko, 20th April 2022."""
 
 import numpy as np
+import math
 
 
 class Distance:
@@ -29,16 +30,19 @@ class DistanceForSeveralRuns:
         self.distance_for_various_run = []
         self.number_of_run = 0
 
+    def is_empty(self):
+        return len(self.distance_for_various_run) == 0
+
     def add_distance(self, distance):
         self.distance_for_various_run.append(distance)
         self.number_of_run += 1
 
-    def get_avg_distance_to_centralized(self):#distances: List[Distance]):
+    def get_avg_distance_to_centralized(self):
         iid = np.mean([d.iid_distance_to_centralized for d in self.distance_for_various_run], axis=0)
         non_iid = np.mean([d.non_iid_distance_to_centralized for d in self.distance_for_various_run], axis=0)
         return iid, non_iid
 
-    def get_avg_distance_one_to_one(self):#distances: List[Distance]):
+    def get_avg_distance_one_to_one(self):
         iid = np.mean([d.iid_distance_one_to_one for d in self.distance_for_various_run], axis=0)
         non_iid = np.mean([d.non_iid_distance_one_to_one for d in self.distance_for_various_run], axis=0)
         return iid, non_iid
@@ -51,7 +55,7 @@ class DistanceForSeveralRuns:
 
 def remove_diagonal(distribution: np.array, symmetric_matrix) -> np.array:
 
-    # If the matrix is symetric, we also need to remove symmetrics elements.
+    # If the matrix is symetric, we also need to remove symmetric elements.
     if symmetric_matrix:
         r, c = np.triu_indices(len(distribution), 1)
         return distribution[r, c]

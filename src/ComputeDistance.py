@@ -5,8 +5,8 @@ import numpy as np
 import ot
 from tqdm import tqdm
 
-from Client import ClientsNetwork
-from Distance import Distance
+from src.Client import ClientsNetwork
+from src.Distance import Distance
 
 NB_CLUSTER_ON_X = 5
 

@@ -11,8 +11,8 @@ from sklearn.preprocessing import scale, StandardScaler
 import seaborn as sns
 from typing import List
 
-from PickleHandler import pickle_saver, pickle_loader
-from Utilities import create_folder_if_not_existing
+from src.PickleHandler import pickle_saver, pickle_loader
+from src.Utilities import create_folder_if_not_existing
 
 NB_CLUSTER_ON_X = 5
 NB_COMPONENTS = 5
