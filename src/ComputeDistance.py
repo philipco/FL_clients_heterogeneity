@@ -35,7 +35,7 @@ def compute_EM_distance(distrib1: np.ndarray, distrib2: np.ndarray) -> float:
     # ot.emd2 throws a warning on precision.
     # TODO : what is the best choice of regularization ?
     a, b = ot.unif(len(distrib1)), ot.unif(len(distrib2))  # uniform distribution on samples
-    return ot.bregman.sinkhorn2(a, b, cost_matrix, reg=0.1)[0]  # Wasserstein distance / EMD value
+    return ot.bregman.sinkhorn2(a, b, cost_matrix, reg=0.1)  # Wasserstein distance / EMD value
 
 
 def compute_metrics_on_Y(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork) \

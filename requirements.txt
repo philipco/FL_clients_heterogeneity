@@ -8,7 +8,7 @@ Pillow
 tensorflow
 numba
 sympy
-pot
+pot>0.8
 scikit-learn
 seaborn
 psutil

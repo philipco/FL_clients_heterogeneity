@@ -66,8 +66,8 @@ def get_dataset(dataset_name: str) -> [np.ndarray, np.ndarray]:
         mnist_data = mnist_data.reshape(mnist_data.shape[0], mnist_data.shape[1] * mnist_data.shape[2])
         mnist_label = mnist.train_labels.numpy()
         return mnist_data, mnist_label
-    print(dataset_name)
-    raise ValueError("The dataset is unknown.")
+
+    raise ValueError("{0}: the dataset is unknown.".format(dataset_name))
 
 
 def load_data(dataset_name: str, nb_clients: int, recompute: bool = False, iid: bool = False) -> ClientsNetwork:
