@@ -15,7 +15,6 @@ from src.PickleHandler import pickle_saver, pickle_loader
 from src.Utilities import create_folder_if_not_existing
 
 NB_CLUSTER_ON_X = 5
-NB_COMPONENTS = 5
 
 
 def palette(nb_of_labels: int, labels: np.ndarray):
@@ -33,11 +32,12 @@ def scatter_plot(data: np.ndarray, labels: np.ndarray, idx: int, tsne_folder: st
 
 class Client:
 
-    def __init__(self, idx: int, X: np.ndarray, Y: np.ndarray, nb_labels: int) -> None:
+    def __init__(self, idx: int, X: np.ndarray, Y: np.ndarray, nb_labels: int, PCA_size: int) -> None:
         super().__init__()
         self.idx = idx
         self.X = X
         # self.X_TSNE = self.compute_TSNE(self.X)
+        self.PCA_size = PCA_size
         self.X_PCA = self.compute_PCA(self.X)
         self.X_lower_dim = self.X_PCA
         self.Y = Y
@@ -58,7 +58,8 @@ class Client:
         return embedded_data
 
     def compute_PCA(self, X: np.ndarray) -> np.ndarray:
-        pca = make_pipeline(StandardScaler(), PCA(n_components=5))
+        # n_components must be between 0 and min(n_samples, n_features).
+        pca = make_pipeline(StandardScaler(), PCA(n_components=self.PCA_size))
         pca.fit(X)
         return pca.transform(X)
 
@@ -93,6 +94,7 @@ class ClientsNetwork:
         self.clients = clients
         self.centralized = centralized_client
         self.nb_clients = len(clients)
+        self.min_len_dataset = min([len(client.Y) for client in self.clients])
 
         # Now that all clients, and also the centralized client are ready, we can compute the Y|X distribution.
         # To compute Y given X distribution, we need to first compute X cluster on complete distribution.

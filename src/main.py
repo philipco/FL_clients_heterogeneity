@@ -7,15 +7,15 @@ from src.Utilities import print_mem_usage
 
 NB_CLIENTS = 10
 
-DATASET_NAME = "fashion_mnist"
+DATASET_NAME = "tcga_brca"
 
-NB_LABELS = 10
+NB_LABELS = {"mnist": 10, "fashion_mnist": 10, "tcga_brca": 2}
 NB_RUNS = 1
 
 
 if __name__ == '__main__':
 
-    my_metrics = StatisticalMetrics(DATASET_NAME, NB_CLIENTS, NB_LABELS)
+    my_metrics = StatisticalMetrics(DATASET_NAME, NB_CLIENTS, NB_LABELS[DATASET_NAME])
 
     for i in range(NB_RUNS):
         print_mem_usage("RUN {0}/{1}".format(i+1, NB_RUNS))
