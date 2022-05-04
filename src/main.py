@@ -10,7 +10,7 @@ NB_CLIENTS = {"mnist": 10, "fashion_mnist": 10, "tcga_brca": 6}
 DATASET_NAME = "tcga_brca"
 
 NB_LABELS = {"mnist": 10, "fashion_mnist": 10, "tcga_brca": 2}
-NB_RUNS = 4
+NB_RUNS = 10
 
 
 if __name__ == '__main__':
