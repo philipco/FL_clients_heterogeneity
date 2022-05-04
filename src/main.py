@@ -5,24 +5,24 @@ from src.DataLoading import load_data
 from src.StatisticalMetrics import StatisticalMetrics
 from src.Utilities import print_mem_usage
 
-NB_CLIENTS = 10
+NB_CLIENTS = {"mnist": 10, "fashion_mnist": 10, "tcga_brca": 6}
 
 DATASET_NAME = "tcga_brca"
 
 NB_LABELS = {"mnist": 10, "fashion_mnist": 10, "tcga_brca": 2}
-NB_RUNS = 1
+NB_RUNS = 4
 
 
 if __name__ == '__main__':
 
-    my_metrics = StatisticalMetrics(DATASET_NAME, NB_CLIENTS, NB_LABELS[DATASET_NAME])
+    my_metrics = StatisticalMetrics(DATASET_NAME, NB_CLIENTS[DATASET_NAME], NB_LABELS[DATASET_NAME])
 
     for i in range(NB_RUNS):
         print_mem_usage("RUN {0}/{1}".format(i+1, NB_RUNS))
 
         ########## Regenerating data ##########
-        iid_clients_network = load_data(DATASET_NAME, NB_CLIENTS, recompute=True, iid=True)
-        non_iid_clients_network = load_data(DATASET_NAME, NB_CLIENTS, recompute=True, iid=False)
+        iid_clients_network = load_data(DATASET_NAME, NB_CLIENTS[DATASET_NAME], recompute=True, iid=True)
+        non_iid_clients_network = load_data(DATASET_NAME, NB_CLIENTS[DATASET_NAME], recompute=True, iid=False)
 
         # ########## Compute metrics on X ##########
         EM_distance_on_X = compute_metrics_on_X(iid_clients_network, non_iid_clients_network)
