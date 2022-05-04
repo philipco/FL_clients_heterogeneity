@@ -88,12 +88,12 @@ class StatisticalMetrics:
             print(distrib_non_iid)
         # sns.kdeplot(distrib_iid, label="iid", color=COLORS[0], ax=ax)
         # sns.kdeplot(distrib_non_iid, label="non-iid", color=COLORS[1], ax=ax)
-        ax.hist(distrib_iid, bins, edgecolor="black", label="iid", color=COLORS[0])
-        ax.hist(distrib_non_iid, bins, edgecolor="black", label="non-iid", color=COLORS[1])
+        ax.hist(distrib_iid, bins, edgecolor="black", label="iid", color=COLORS[0], alpha=0.5)
+        ax.hist(distrib_non_iid, bins, edgecolor="black", label="non-iid", color=COLORS[1], alpha=0.5)
         ax.set_title(suptitle, fontsize='xx-large', weight='extra bold')
         ax.set_ylabel("Value's occurrences")
         ax.legend(loc='upper right')
-        plt.savefig('{0}/{1}_hist.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
+        plt.savefig('{0}/{1}_hist.png'.format(self.metrics_folder, plot_name), dvi=250, bbox_inches='tight')
 
     def plot_grouped_histogram(self, distances: List[DistanceForSeveralRuns], suptitle: str, plot_name: str, label: str,
                                symmetric_matrix: bool = False) -> None:

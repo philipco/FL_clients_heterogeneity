@@ -1,14 +1,20 @@
 numpy
 matplotlib>=3.4
 tqdm
-scipy
+scipy>=1.6
 pytorch>=1.10.2
 torchvision # Otherwise issue with Pillow
 Pillow
 tensorflow
 numba
 sympy
-pot
+pot>0.8
 scikit-learn
 seaborn
 psutil
+pandas
+
+# Required by Flamby
+albumentations
+efficientnet_pytorch
+lifelines
