@@ -1,16 +1,17 @@
 """Created by Constantin Philippenko, 5th April 2022."""
+import matplotlib.pyplot as plt
 
 from src.ComputeDistance import *
 from src.DataLoading import load_data
 from src.StatisticalMetrics import StatisticalMetrics
 from src.Utilities import print_mem_usage
 
-NB_CLIENTS = {"mnist": 10, "fashion_mnist": 10, "tcga_brca": 6}
+NB_CLIENTS = {"mnist": 10, "fashion_mnist": 10, "tcga_brca": 6, "heart_disease": 2}
 
-DATASET_NAME = "tcga_brca"
+DATASET_NAME = "mnist"
 
-NB_LABELS = {"mnist": 10, "fashion_mnist": 10, "tcga_brca": 2}
-NB_RUNS = 10
+NB_LABELS = {"mnist": 10, "fashion_mnist": 10, "tcga_brca": 2, "heart_disease": 2}
+NB_RUNS = 1
 
 
 if __name__ == '__main__':

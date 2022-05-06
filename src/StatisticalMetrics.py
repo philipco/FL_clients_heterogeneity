@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.axes_grid1 import make_axes_locatable, axes_size
 
 import matplotlib
 
@@ -100,80 +100,63 @@ class StatisticalMetrics:
 
         if distances[0].is_empty(): return
 
-        # legend_line = [Line2D([0], [0], color="black", lw=1, label=label)]
-        # xmax, ymax = 0, 0
-
         fig, axes = plt.subplots(1, 2, sharey=True, sharex=True)
         for idx in range(len(distances)):
 
             distrib_iid, distrib_non_iid = distances[idx].get_concatenate_distance_one_to_one(symmetric_matrix)
 
-            # y_iid, bin_edges_iid = np.histogram(distrib_iid, bins="sturges")
-            # bincenters = 0.5 * (bin_edges_iid[1:] + bin_edges_iid[:-1])
-            sns.kdeplot(distrib_iid, label="{0}{1}".format(label, idx), ax=axes[0], clip=(0.0, 1.0))
-            # axes[0].plot(bincenters, y_iid, '-')
-            # xmax = max(xmax, max(bincenters))
-            # ymax = max(ymax, max(y_iid))
-            # y_non_iid, bin_edges_non_iid = np.histogram(distrib_non_iid, bins=100)
-            # bincenters = 0.5 * (bin_edges_non_iid[1:] + bin_edges_non_iid[:-1])
-            # xmax = max(xmax, max(bincenters))
-            # ymax = max(ymax, max(y_non_iid))
-            sns.kdeplot(distrib_non_iid, label="{0}{1}".format(label, idx), ax=axes[1], clip=(0.0, 1.0))
+            if len(np.unique(distrib_non_iid)) != 1:
+                sns.kdeplot(distrib_iid, label="{0}{1}".format(label, idx), ax=axes[0], clip=(0.0, 1.0))
+                sns.kdeplot(distrib_non_iid, label="{0}{1}".format(label, idx), ax=axes[1], clip=(0.0, 1.0))
+            else:
+                list_distrib_iid = [distances[i].get_concatenate_distance_one_to_one(symmetric_matrix)[0] for i in range(len(distances))]
+                bins_iid = np.histogram(np.hstack(list_distrib_iid), bins=10)[1]
+                axes[0].hist(distrib_iid, label="{0}{1}".format(label, idx), bins=bins_iid, alpha=0.5)
+                list_distrib_non_iid = [distances[i].get_concatenate_distance_one_to_one(symmetric_matrix)[1] for i in
+                                    range(len(distances))]
+                bins_non_iid = np.histogram(np.hstack(list_distrib_non_iid), bins=10)[1]
+                axes[1].hist(distrib_non_iid, label="{0}{1}".format(label, idx), bins=bins_non_iid, alpha=0.5)
         axes[0].set_title(label=TITLES[0])
         axes[1].set_title(label=TITLES[1])
         axes[0].legend(loc='best', fontsize = 5)
         axes[1].legend(loc='best', fontsize = 5)
         axes[0].set_ylabel("Density")
-        # plt.xlim(0 - xmax*0.05, xmax*1.1)
-        # plt.ylim(0, ymax*1.1)
         fig.supxlabel("Distance")
         plt.suptitle(suptitle, fontsize ='xx-large', weight ='extra bold')
-        plt.savefig('{0}/{1}_grouped_hist.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
+        plt.savefig('{0}/{1}_grouped_hist.png'.format(self.metrics_folder, plot_name), dvi=250, bbox_inches='tight')
 
     def plot_distance(self, distance: DistanceForSeveralRuns, suptitle: str, plot_name: str) -> None:
 
         if distance.is_empty(): return
 
+        fig = plt.figure()
         ax1 = plt.subplot2grid((self.nb_clients + 1, 2), (0, 0), colspan=1, rowspan=self.nb_clients)
         ax2 = plt.subplot2grid((self.nb_clients + 1, 2), (0, 1), colspan=1, rowspan=self.nb_clients)
-        ax3 = plt.subplot2grid((self.nb_clients + 1, 2), (self.nb_clients, 0), colspan=1, rowspan=1)
-        ax4 = plt.subplot2grid((self.nb_clients + 1, 2), (self.nb_clients, 1), colspan=1, rowspan=1)
 
-        axes = [ax1, ax2, ax3, ax4]
+        axes = [ax1, ax2]
 
         iid_distance_one_to_one, non_iid_distance_one_to_one = distance.get_avg_distance_one_to_one()
-        iid_distance_to_centralized, non_iid_distance_to_centralized = distance.get_avg_distance_to_centralized()
-        matrix_to_plot = [iid_distance_one_to_one, non_iid_distance_one_to_one,
-                          iid_distance_to_centralized, non_iid_distance_to_centralized]
+        matrix_to_plot = [iid_distance_one_to_one, non_iid_distance_one_to_one]
 
         one_to_one_min = min(min(iid_distance_one_to_one.flatten()),
                              min(non_iid_distance_one_to_one.flatten()))
         one_to_one_max = max(max(iid_distance_one_to_one.flatten()),
                              max(non_iid_distance_one_to_one.flatten()))
 
-        avg_min = min(min(iid_distance_to_centralized.flatten()),
-                      min(non_iid_distance_to_centralized.flatten()))
-        avg_max = max(max(iid_distance_to_centralized.flatten()),
-                      max(non_iid_distance_to_centralized.flatten()))
+        im1 = axes[0].imshow(matrix_to_plot[0], vmin=one_to_one_min, vmax=one_to_one_max, aspect="auto", cmap='Blues')
+        im2 = axes[1].imshow(matrix_to_plot[1], vmin=one_to_one_min, vmax=one_to_one_max, aspect="auto", cmap='Blues')
+        axes[0].set_title(label=TITLES[0])
+        axes[1].set_title(label=TITLES[1])
 
-        for i in range(len(matrix_to_plot)):
-            axes[i].get_yaxis().set_visible(False)
-            if len(matrix_to_plot[i].shape) != 1:
-                im = axes[i].imshow(matrix_to_plot[i], cmap="Blues", vmin=one_to_one_min, vmax=one_to_one_max)
-                axes[i].set_title(label=TITLES[i])
-                axes[i].set_xlabel("Client index")
-            else:
-                im = axes[i].imshow(np.expand_dims(matrix_to_plot[i], axis=0), cmap="Blues",
-                                    vmin=avg_min, vmax=avg_max)
-            if i in [1, 3]:
-                # create an axes on the right side of ax. The width of cax will be 5%
-                # of ax and the padding between cax and ax will be fixed at 0.05 inch.
-                divider = make_axes_locatable(axes[i])
-                cax = divider.append_axes("right", size="5%", pad=0.05)
-                plt.colorbar(im, ax=axes[i], cax=cax)
-        axes[0].get_yaxis().set_visible(True)
-        axes[0].set_ylabel("Client index")
-        plt.suptitle(suptitle, fontsize ='xx-large', weight ='extra bold')
+        axes[0].set_xlabel("Client index")
+        axes[1].set_xlabel("Client index")
+
+        divider = make_axes_locatable(axes[1])
+        cax = divider.append_axes("right", size="6%", pad=0.05)
+        fig.colorbar(im2, ax=axes[1], cax=cax)
+
+        axes[1].get_yaxis().set_visible(False)
+        plt.suptitle(suptitle, fontsize='xx-large', weight='extra bold')
         plt.savefig('{0}/{1}.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
 
     def plot_Y_metrics(self) -> None:
