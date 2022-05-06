@@ -4,6 +4,7 @@ import sys
 from os import path
 from typing import List
 
+import matplotlib.pyplot as plt
 import numpy as np
 from torch.utils.data import DataLoader
 
@@ -12,6 +13,19 @@ from src.PickleHandler import pickle_loader
 
 DIRICHLET_COEF = 0.5
 PCA_NB_COMPONENTS = 5
+
+
+def iid_split(data: np.ndarray, labels: np.ndarray, nb_clients: int) -> [List[np.ndarray], List[np.ndarray]]:
+    nb_points = len(labels)
+    X = []
+    Y = []
+    indices = np.arange(nb_points)
+    np.random.shuffle(indices)
+    split_indices = np.array_split(indices, nb_clients)
+    for i in range(nb_clients):
+        X.append(data[split_indices[i]])
+        Y.append(labels[split_indices[i]])
+    return X, Y
 
 
 def dirichlet_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, dirichlet_coef: float) \
@@ -50,7 +64,7 @@ def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, nb_lab
         if split:
             data, labels = np.concatenate(data), np.concatenate(labels)
         if iid:
-            X, Y = dirichlet_split(data, labels, nb_clients, dirichlet_coef=10**5)
+            X, Y = iid_split(data, labels, nb_clients)
         else:
             X, Y = dirichlet_split(data, labels, nb_clients, dirichlet_coef=DIRICHLET_COEF)
     assert [len(np.unique(y)) for y in Y] == [nb_labels for y in Y], "Some labels are not represented on some clients."
@@ -102,14 +116,25 @@ def get_dataset(dataset_name: str) -> [np.ndarray, np.ndarray]:
         from datasets.fed_tcga_brca.dataset import FedTcgaBrca
         X, Y = [], []
         for i in range(6):
-            train_dataset = FedTcgaBrca(train=True, pooled=False, center=i) # TODO : not pooled
+            train_dataset = FedTcgaBrca(train=True, pooled=False, center=i)
             data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
             X.append(data.numpy())
-            Y.append(labels[:,0].numpy())
+            Y.append(labels.numpy())
         return X, Y, True # TODO : weird labels size
 
     elif dataset_name == "heart_disease":
-        pass
+        sys.path.insert(0, '/home/constantin/Github/FLamby')
+        import flamby
+        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
+        import datasets
+        from datasets.fed_heart_disease.dataset import FedHeartDisease
+        X, Y = [], []
+        for i in range(2):
+            train_dataset = FedHeartDisease(train=True, pooled=False, center=i)
+            data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
+            X.append(data.numpy())
+            Y.append(np.concatenate(labels.numpy()))
+        return X, Y, True  # TODO : weird labels size
 
     raise ValueError("{0}: the dataset is unknown.".format(dataset_name))
 
