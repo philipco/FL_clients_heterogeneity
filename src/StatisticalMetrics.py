@@ -16,7 +16,7 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-from src.Client import NB_CLUSTER_ON_X
+from src.Client import NB_CLUSTER_ON_CONTINUOUS_VAR
 from src.Distance import Distance, DistanceForSeveralRuns
 from src.PickleHandler import pickle_saver
 from src.Utilities import create_folder_if_not_existing
@@ -27,25 +27,30 @@ COLORS = ["tab:blue", "tab:orange"]
 
 class StatisticalMetrics:
 
-    def __init__(self, dataset_name: str, nb_clients: int, nb_labels: int, iid: bool = False) -> None:
+    def __init__(self, dataset_name: str, nb_clients: int, nb_labels: int, labels_type: str) -> None:
         super().__init__()
         self.dataset_name = dataset_name
-        if iid:
-            self.dataset_name = "{0}-iid".format(self.dataset_name)
         self.nb_clients = nb_clients
         self.nb_labels = nb_labels
+        self.labels_type = labels_type
         self.metrics_folder = "pictures/" + self.dataset_name + "/metrics"
 
         ############## Metrics on X ##############
         self.EM_distance_on_X = DistanceForSeveralRuns()
 
         ############## Metrics on Y ##############
-        self.KL_distance_on_Y = DistanceForSeveralRuns()
-        self.TV_distance_on_Y = DistanceForSeveralRuns()
+        if self.labels_type == "continuous":
+            self.KL_distance_on_Y = DistanceForSeveralRuns()
+            self.TV_distance_on_Y = DistanceForSeveralRuns()
+        elif self.labels_type == "continuous":
+            self.EM_distance_on_Y = DistanceForSeveralRuns()
 
         ############## Metrics on Y | X ##############
-        self.KL_distance_on_Y_given_X = [DistanceForSeveralRuns()  for i in range(NB_CLUSTER_ON_X)]
-        self.TV_distance_on_Y_given_X = [DistanceForSeveralRuns() for i in range(NB_CLUSTER_ON_X)]
+        if self.labels_type == "continuous":
+            self.KL_distance_on_Y_given_X = [DistanceForSeveralRuns() for i in range(NB_CLUSTER_ON_CONTINUOUS_VAR)]
+            self.TV_distance_on_Y_given_X = [DistanceForSeveralRuns() for i in range(NB_CLUSTER_ON_CONTINUOUS_VAR)]
+        elif self.labels_type == "continuous":
+            self.EM_distance_on_Y_given_X = [DistanceForSeveralRuns() for i in range(NB_CLUSTER_ON_CONTINUOUS_VAR)]
 
         ############## Metrics on X | Y ##############
         self.EM_distance_on_X_given_Y = [DistanceForSeveralRuns()  for i in range(self.nb_labels)]
@@ -56,9 +61,15 @@ class StatisticalMetrics:
         create_folder_if_not_existing("pickle/{0}".format(self.dataset_name))
         pickle_saver(self, "pickle/{0}/stat_metrics".format(self.dataset_name))
 
-    def set_metrics_on_Y(self, KL_distance_on_Y: Distance, TV_distance_on_Y: Distance) -> None:
-        self.KL_distance_on_Y.add_distance(KL_distance_on_Y)
-        self.TV_distance_on_Y.add_distance(TV_distance_on_Y)
+    def set_metrics_on_Y(self, metrics_on_Y) -> None:
+        if self.labels_type == "discrete":
+            KL_distance_on_Y, TV_distance_on_Y = metrics_on_Y
+            self.KL_distance_on_Y.add_distance(KL_distance_on_Y)
+            self.TV_distance_on_Y.add_distance(TV_distance_on_Y)
+        if self.labels_type == "continuous":
+            self.EM_distance_on_Y.add_distance(metrics_on_Y)
+        else:
+            raise ValueError("Unrecognized labels type.")
 
     def set_metrics_on_X(self, EM_distance_on_X: Distance) -> None:
         self.EM_distance_on_X.add_distance(EM_distance_on_X)
@@ -67,11 +78,17 @@ class StatisticalMetrics:
         for y in range(self.nb_labels):
             self.EM_distance_on_X_given_Y[y].add_distance(EM_distance_on_X_given_Y[y])
 
-    def set_metrics_on_Y_given_X(self, KL_distance_on_Y_given_X: List[Distance],
-                                 TV_distance_on_Y_given_X: List[Distance]) -> None:
-        for x in range(NB_CLUSTER_ON_X):
-            self.KL_distance_on_Y_given_X[x].add_distance(KL_distance_on_Y_given_X[x])
-            self.TV_distance_on_Y_given_X[x].add_distance(TV_distance_on_Y_given_X[x])
+    def set_metrics_on_Y_given_X(self, metrics_on_Y_given_X) -> None:
+        if self.labels_type == "discrete":
+            KL_distance_on_Y_given_X, TV_distance_on_Y_given_X = metrics_on_Y_given_X
+            for x in range(NB_CLUSTER_ON_CONTINUOUS_VAR):
+                self.KL_distance_on_Y_given_X[x].add_distance(KL_distance_on_Y_given_X[x])
+                self.TV_distance_on_Y_given_X[x].add_distance(TV_distance_on_Y_given_X[x])
+        if self.labels_type == "continuous":
+            for y in range(self.nb_labels):
+                self.EM_distance_on_Y_given_X[y].add_distance(metrics_on_Y_given_X[y])
+        else:
+            raise ValueError("Unrecognized labels type.")
 
     def plot_histogram(self, distance: DistanceForSeveralRuns, suptitle: str, plot_name: str,
                        symmetric_matrix: bool = False) -> None:
@@ -123,7 +140,7 @@ class StatisticalMetrics:
         axes[0].set_ylabel("Density")
         fig.supxlabel("Distance")
         plt.suptitle(suptitle, fontsize ='xx-large', weight ='extra bold')
-        plt.savefig('{0}/{1}_grouped_hist.png'.format(self.metrics_folder, plot_name), dvi=250, bbox_inches='tight')
+        plt.savefig('{0}/{1}_grouped_hist.png'.format(self.metrics_folder, plot_name), dvi=1000, bbox_inches='tight')
 
     def plot_distance(self, distance: DistanceForSeveralRuns, suptitle: str, plot_name: str) -> None:
 
@@ -186,7 +203,7 @@ class StatisticalMetrics:
                                     "$X|Y=$", symmetric_matrix=True)
 
     def plot_Y_given_X_metrics(self) -> None:
-        for x in range(NB_CLUSTER_ON_X):
+        for x in range(NB_CLUSTER_ON_CONTINUOUS_VAR):
             plot_name = r"Y|X={0}".format(x)
             self.plot_distance(self.KL_distance_on_Y_given_X[x], r"KL distance for ${0}$".format(plot_name),
                                "{0}_KL".format(plot_name))

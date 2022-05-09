@@ -14,7 +14,7 @@ from typing import List
 from src.PickleHandler import pickle_saver, pickle_loader
 from src.Utilities import create_folder_if_not_existing
 
-NB_CLUSTER_ON_X = 5
+NB_CLUSTER_ON_CONTINUOUS_VAR = 5
 
 
 def palette(nb_of_labels: int, labels: np.ndarray):
@@ -45,7 +45,6 @@ class Client:
 
         # Distributions that we need to compare between clients.
         self.Y_distribution = self.compute_Y_distribution()
-        self.X_given_Y_distribution = self.compute_X_given_Y_distribution()
 
     def compute_TSNE(self, X: np.ndarray):
         """Compute the TSNE representation of a dataset."""
@@ -66,29 +65,43 @@ class Client:
     def compute_Y_distribution(self) -> np.ndarray:
         return np.array([(self.Y == y).sum() / len(self.Y) for y in range(self.nb_labels)])
 
-    def compute_X_given_Y_distribution(self) -> np.ndarray:
-        distrib = [self.X_lower_dim[self.Y == y] for y in range(self.nb_labels)]
+    def compute_X_given_Y_distribution(self, labels_type: str) -> np.ndarray:
+        if labels_type == "discrete":
+            distrib = [self.X_lower_dim[self.Y == y] for y in range(self.nb_labels)]
+        elif labels_type == "continuous":
+            distrib = [self.X_lower_dim[self.Y_clusters == y] for y in range(NB_CLUSTER_ON_CONTINUOUS_VAR)]
+        else:
+            raise ValueError("Unrecognized labels type.")
         assert [len(x) > 0 for x in distrib] == [True for x in distrib], "X|Y, some labels are missing."
         return distrib
 
-    def set_Y_given_X(self) -> None:
-        self.Y_given_X = [self.Y[self.X_clusters == x] for x in range(NB_CLUSTER_ON_X)]
+    ### For Y | X ###
+    def set_X_clusters(self, X_clusters) -> None:
+        self.X_clusters = X_clusters
+
+    def compute_X_clusters(self, X_cluster_predictor: KMeans) -> None:
+        self.set_X_clusters(X_cluster_predictor.predict(self.X_lower_dim))
 
     def set_Y_given_X_distribution(self) -> None:
         self.Y_given_X_distribution = []
-        for x in range(NB_CLUSTER_ON_X):
-            self.Y_given_X_distribution.append(np.array([(self.Y[self.X_clusters == x] == y).sum() / len(self.Y[self.X_clusters == x]) for y in range(self.nb_labels)]))
+        for x in range(NB_CLUSTER_ON_CONTINUOUS_VAR):
+            self.Y_given_X_distribution.append(
+                np.array([(self.Y[self.X_clusters == x] == y).sum() / len(self.Y[self.X_clusters == x])
+                          for y in range(self.nb_labels)]))
 
-    def set_X_clusters(self, X_clusters) -> None:
-        self.X_clusters = X_clusters
-    
-    def compute_X_clusters(self, X_cluster_predictor: KMeans) -> None:
-        self.set_X_clusters(X_cluster_predictor.predict(self.X_lower_dim))
+    ################
+    ### For X | Y (relevant only when Y is continuous ###
+    def set_Y_clusters(self, Y_clusters) -> None:
+        self.Y_clusters = Y_clusters
+
+    def compute_Y_clusters(self, Y_cluster_predictor: KMeans) -> None:
+        self.set_Y_clusters(Y_cluster_predictor.predict(self.Y))
+    #####################################################
 
 
 class ClientsNetwork:
 
-    def __init__(self, dataset_name: str, clients: List[Client], centralized_client: Client) -> None:
+    def __init__(self, dataset_name: str, clients: List[Client], centralized_client: Client, labels_type: str) -> None:
         super().__init__()
         self.dataset_name = dataset_name
         self.clients = clients
@@ -98,7 +111,10 @@ class ClientsNetwork:
 
         # Now that all clients, and also the centralized client are ready, we can compute the Y|X distribution.
         # To compute Y given X distribution, we need to first compute X cluster on complete distribution.
+        self.labels_type = labels_type
         self.compute_Y_given_X_distribution()
+        self.compute_X_given_Y_distribution()
+
         self.save_itself()
 
     def save_itself(self) -> None:
@@ -112,18 +128,32 @@ class ClientsNetwork:
             scatter_plot(self.clients[i].X_TSNE, self.clients[i].Y, self.clients[i].idx, tsne_folder)
         scatter_plot(self.centralized.X_TSNE, self.centralized.Y, self.centralized.idx, tsne_folder)
 
-    def clusterize_X_distribution_for_each_client(self) -> None:
-        X_cluster_predictor = self.train_X_cluster_predictor()
-        for client in self.clients:
-            client.compute_X_clusters(X_cluster_predictor)
-
-    def train_X_cluster_predictor(self) -> KMeans:
-        X_cluster_predictor = KMeans(n_clusters=NB_CLUSTER_ON_X, random_state=0).fit(self.centralized.X_lower_dim)
-        self.centralized.set_X_clusters(X_cluster_predictor.labels_)
-        return X_cluster_predictor
-
     def compute_Y_given_X_distribution(self) -> None:
-        self.clusterize_X_distribution_for_each_client()
+        # Computing clusters on X
+        cluster_predictor = train_cluster_predictor(self.centralized.X_lower_dim)
+        self.centralized.set_X_clusters(cluster_predictor.labels_)
+        for client in self.clients:
+            client.compute_X_clusters(cluster_predictor)
+
+        # Computing Y|X.
         self.centralized.set_Y_given_X_distribution()
         for client in self.clients:
             client.set_Y_given_X_distribution()
+
+    def compute_X_given_Y_distribution(self) -> None:
+
+        if self.labels_type == "continuous":
+            # Computing clusters on Y
+            cluster_predictor = train_cluster_predictor(self.centralized.Y)
+            self.centralized.set_Y_clusters(cluster_predictor.labels_)
+            for client in self.clients:
+                client.compute_Y_clusters(cluster_predictor)
+
+        self.centralized.X_given_Y_distribution = self.centralized.compute_X_given_Y_distribution(self.labels_type)
+        for client in self.clients:
+            client.X_given_Y_distribution = client.compute_X_given_Y_distribution(self.labels_type)
+
+
+def train_cluster_predictor(low_dim_data) -> KMeans:
+    cluster_predictor = KMeans(n_clusters=NB_CLUSTER_ON_CONTINUOUS_VAR, random_state=0).fit(low_dim_data) #self.centralized.X_lower_dim)
+    return cluster_predictor
