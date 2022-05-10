@@ -12,7 +12,7 @@ from src.Client import Client, ClientsNetwork
 from src.PickleHandler import pickle_loader
 
 DIRICHLET_COEF = 0.5
-PCA_NB_COMPONENTS = 5
+PCA_NB_COMPONENTS = 10
 
 
 def iid_split(data: np.ndarray, labels: np.ndarray, nb_clients: int) -> [List[np.ndarray], List[np.ndarray]]:
@@ -55,7 +55,8 @@ def dirichlet_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, diric
     return X, Y
 
 
-def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, nb_labels: int, split: bool, iid: bool = False) -> List[Client]:
+def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, nb_labels: int, split: bool, labels_type: str,
+                   iid: bool = False) -> List[Client]:
     clients = []
     # It the dataset is already split and we don't want to create an iid dataset.
     if split and not iid:
@@ -70,7 +71,7 @@ def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, nb_lab
     # assert [len(np.unique(y)) for y in Y] == [nb_labels for y in Y], "Some labels are not represented on some clients."
     PCA_size = min(PCA_NB_COMPONENTS, min([len(x) for x in X]))
     for i in range(nb_clients):
-        clients.append(Client(i, X[i], Y[i], nb_labels, PCA_size))
+        clients.append(Client(i, X[i], Y[i], nb_labels, PCA_size, labels_type))
     return clients, PCA_size
 
 
@@ -123,8 +124,8 @@ def get_dataset(dataset_name: str) -> [np.ndarray, np.ndarray]:
             train_dataset = FedTcgaBrca(train=True, pooled=False, center=i)
             data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
             X.append(data.numpy())
-            Y.append(labels.numpy()[:1])
-        return X, Y, True # TODO : weird labels size
+            Y.append(labels.numpy()[:,1])
+        return X, Y, True
 
     elif dataset_name == "heart_disease":
         sys.path.insert(0, '/home/constantin/Github/FLamby')
@@ -133,7 +134,7 @@ def get_dataset(dataset_name: str) -> [np.ndarray, np.ndarray]:
         import datasets
         from datasets.fed_heart_disease.dataset import FedHeartDisease
         X, Y = [], []
-        for i in range(2):
+        for i in range(4):
             train_dataset = FedHeartDisease(train=True, pooled=False, center=i)
             data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
             X.append(data.numpy())
@@ -160,11 +161,12 @@ def load_data(dataset_name: str, nb_clients: int, labels_type: str, recompute: b
         else:
             nb_labels = len(np.unique(labels))
 
-        clients, PCA_size = create_clients(nb_clients, data, labels, nb_labels, splitted, iid=iid)
+        clients, PCA_size = create_clients(nb_clients, data, labels, nb_labels, splitted, labels_type, iid=iid)
         if splitted:
-            central_client = Client("central", np.concatenate(data), np.concatenate(labels), nb_labels, PCA_size)
+            central_client = Client("central", np.concatenate(data), np.concatenate(labels), nb_labels, PCA_size,
+                                    labels_type)
         else:
-            central_client = Client("central", data, labels, nb_labels, PCA_size)
+            central_client = Client("central", data, labels, nb_labels, PCA_size, labels_type)
 
         clients_network = ClientsNetwork(dataset_name, clients, central_client, labels_type)
 

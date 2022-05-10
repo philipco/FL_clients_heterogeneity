@@ -3,6 +3,7 @@ import warnings
 
 import numpy as np
 from matplotlib import pyplot as plt
+from sklearn import preprocessing
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
@@ -14,7 +15,7 @@ from typing import List
 from src.PickleHandler import pickle_saver, pickle_loader
 from src.Utilities import create_folder_if_not_existing
 
-NB_CLUSTER_ON_CONTINUOUS_VAR = 5
+NB_CLUSTER_ON_CONTINUOUS_VAR = 3
 
 
 def palette(nb_of_labels: int, labels: np.ndarray):
@@ -32,19 +33,24 @@ def scatter_plot(data: np.ndarray, labels: np.ndarray, idx: int, tsne_folder: st
 
 class Client:
 
-    def __init__(self, idx: int, X: np.ndarray, Y: np.ndarray, nb_labels: int, PCA_size: int) -> None:
+    def __init__(self, idx: int, X: np.ndarray, Y: np.ndarray, nb_labels: int, PCA_size: int, labels_type: str) -> None:
         super().__init__()
         self.idx = idx
         self.X = X
         # self.X_TSNE = self.compute_TSNE(self.X)
-        self.PCA_size = PCA_size
-        self.X_PCA = self.compute_PCA(self.X)
-        self.X_lower_dim = self.X_PCA
+
+        if self.X.shape[1] <= 20:
+            scaler = preprocessing.StandardScaler().fit(self.X)
+            self.X_lower_dim = scaler.transform(self.X)
+        else:
+            self.PCA_size = PCA_size
+            self.X_PCA = self.compute_PCA(self.X)
+            self.X_lower_dim = self.compute_PCA(self.X)
         self.Y = Y
         self.nb_labels = nb_labels
 
         # Distributions that we need to compare between clients.
-        self.Y_distribution = self.compute_Y_distribution()
+        self.Y_distribution = self.compute_Y_distribution(labels_type)
 
     def compute_TSNE(self, X: np.ndarray):
         """Compute the TSNE representation of a dataset."""
@@ -62,17 +68,24 @@ class Client:
         pca.fit(X)
         return pca.transform(X)
 
-    def compute_Y_distribution(self) -> np.ndarray:
-        return np.array([(self.Y == y).sum() / len(self.Y) for y in range(self.nb_labels)])
+    def compute_Y_distribution(self, labels_type: str) -> np.ndarray:
+        if labels_type == "discrete":
+            return np.array([(self.Y == y).sum() / len(self.Y) for y in range(self.nb_labels)])
+        elif labels_type == "continuous":
+            return self.Y
+        else:
+            raise ValueError("Unrecognized labels type.")
+
 
     def compute_X_given_Y_distribution(self, labels_type: str) -> np.ndarray:
         if labels_type == "discrete":
             distrib = [self.X_lower_dim[self.Y == y] for y in range(self.nb_labels)]
+            assert [len(x) > 0 for x in distrib] == [True for x in distrib], "X|Y, some labels are missing."
         elif labels_type == "continuous":
             distrib = [self.X_lower_dim[self.Y_clusters == y] for y in range(NB_CLUSTER_ON_CONTINUOUS_VAR)]
+            # Je ne peux pas garantir que touts les clusters de Y seront bien sur chaque machine ...
         else:
             raise ValueError("Unrecognized labels type.")
-        assert [len(x) > 0 for x in distrib] == [True for x in distrib], "X|Y, some labels are missing."
         return distrib
 
     ### For Y | X ###
@@ -82,12 +95,18 @@ class Client:
     def compute_X_clusters(self, X_cluster_predictor: KMeans) -> None:
         self.set_X_clusters(X_cluster_predictor.predict(self.X_lower_dim))
 
-    def set_Y_given_X_distribution(self) -> None:
+    def set_Y_given_X_distribution(self, labels_type: str) -> None:
         self.Y_given_X_distribution = []
-        for x in range(NB_CLUSTER_ON_CONTINUOUS_VAR):
-            self.Y_given_X_distribution.append(
-                np.array([(self.Y[self.X_clusters == x] == y).sum() / len(self.Y[self.X_clusters == x])
-                          for y in range(self.nb_labels)]))
+        if labels_type == "discrete":
+            for x in range(NB_CLUSTER_ON_CONTINUOUS_VAR):
+                self.Y_given_X_distribution.append(
+                    np.array([(self.Y[self.X_clusters == x] == y).sum() / len(self.Y[self.X_clusters == x])
+                              for y in range(self.nb_labels)]))
+        elif labels_type == "continuous":
+            for x in range(NB_CLUSTER_ON_CONTINUOUS_VAR):
+                self.Y_given_X_distribution.append(self.Y[self.X_clusters == x])
+        else:
+            raise ValueError("Unrecognized labels type.")
 
     ################
     ### For X | Y (relevant only when Y is continuous ###
@@ -95,7 +114,7 @@ class Client:
         self.Y_clusters = Y_clusters
 
     def compute_Y_clusters(self, Y_cluster_predictor: KMeans) -> None:
-        self.set_Y_clusters(Y_cluster_predictor.predict(self.Y))
+        self.set_Y_clusters(Y_cluster_predictor.predict(self.Y.reshape(-1, 1)))
     #####################################################
 
 
@@ -136,15 +155,15 @@ class ClientsNetwork:
             client.compute_X_clusters(cluster_predictor)
 
         # Computing Y|X.
-        self.centralized.set_Y_given_X_distribution()
+        self.centralized.set_Y_given_X_distribution(self.labels_type)
         for client in self.clients:
-            client.set_Y_given_X_distribution()
+            client.set_Y_given_X_distribution(self.labels_type)
 
     def compute_X_given_Y_distribution(self) -> None:
 
         if self.labels_type == "continuous":
             # Computing clusters on Y
-            cluster_predictor = train_cluster_predictor(self.centralized.Y)
+            cluster_predictor = train_cluster_predictor(self.centralized.Y.reshape(-1, 1))
             self.centralized.set_Y_clusters(cluster_predictor.labels_)
             for client in self.clients:
                 client.compute_Y_clusters(cluster_predictor)
@@ -154,6 +173,6 @@ class ClientsNetwork:
             client.X_given_Y_distribution = client.compute_X_given_Y_distribution(self.labels_type)
 
 
-def train_cluster_predictor(low_dim_data) -> KMeans:
-    cluster_predictor = KMeans(n_clusters=NB_CLUSTER_ON_CONTINUOUS_VAR, random_state=0).fit(low_dim_data) #self.centralized.X_lower_dim)
+def train_cluster_predictor(data) -> object:
+    cluster_predictor = KMeans(n_clusters=NB_CLUSTER_ON_CONTINUOUS_VAR, random_state=0).fit(data)
     return cluster_predictor

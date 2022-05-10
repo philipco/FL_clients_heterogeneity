@@ -39,14 +39,14 @@ class StatisticalMetrics:
         self.EM_distance_on_X = DistanceForSeveralRuns()
 
         ############## Metrics on Y ##############
-        if self.labels_type == "continuous":
+        if self.labels_type == "discrete":
             self.KL_distance_on_Y = DistanceForSeveralRuns()
             self.TV_distance_on_Y = DistanceForSeveralRuns()
         elif self.labels_type == "continuous":
             self.EM_distance_on_Y = DistanceForSeveralRuns()
 
         ############## Metrics on Y | X ##############
-        if self.labels_type == "continuous":
+        if self.labels_type == "discrete":
             self.KL_distance_on_Y_given_X = [DistanceForSeveralRuns() for i in range(NB_CLUSTER_ON_CONTINUOUS_VAR)]
             self.TV_distance_on_Y_given_X = [DistanceForSeveralRuns() for i in range(NB_CLUSTER_ON_CONTINUOUS_VAR)]
         elif self.labels_type == "continuous":
@@ -66,7 +66,7 @@ class StatisticalMetrics:
             KL_distance_on_Y, TV_distance_on_Y = metrics_on_Y
             self.KL_distance_on_Y.add_distance(KL_distance_on_Y)
             self.TV_distance_on_Y.add_distance(TV_distance_on_Y)
-        if self.labels_type == "continuous":
+        elif self.labels_type == "continuous":
             self.EM_distance_on_Y.add_distance(metrics_on_Y)
         else:
             raise ValueError("Unrecognized labels type.")
@@ -84,7 +84,7 @@ class StatisticalMetrics:
             for x in range(NB_CLUSTER_ON_CONTINUOUS_VAR):
                 self.KL_distance_on_Y_given_X[x].add_distance(KL_distance_on_Y_given_X[x])
                 self.TV_distance_on_Y_given_X[x].add_distance(TV_distance_on_Y_given_X[x])
-        if self.labels_type == "continuous":
+        elif self.labels_type == "continuous":
             for y in range(self.nb_labels):
                 self.EM_distance_on_Y_given_X[y].add_distance(metrics_on_Y_given_X[y])
         else:

@@ -29,12 +29,11 @@ def compute_EM_distance(distrib1: np.ndarray, distrib2: np.ndarray) -> float:
     """Earth's mover."""
     cost_matrix = ot.dist(distrib1, distrib2)
     assert len(distrib1) >= 1 and len(distrib2) >= 1, "Distributions must not be empty."
-    cost_matrix /= cost_matrix.max()
     # Sinkhorn is much faster than ot.emd2.
     # ot.emd2 throws a warning on precision.
     # TODO : what is the best choice of regularization ?
     a, b = ot.unif(len(distrib1)), ot.unif(len(distrib2))  # uniform distribution on samples
-    return ot.bregman.sinkhorn2(a, b, cost_matrix, reg=0.1, numItermax=10000)  # Wasserstein distance / EMD value
+    return ot.emd2(a, b, cost_matrix)  # Wasserstein distance / EMD value
 
 
 def compute_metrics_on_continuous_var(nb_clients: int, centralized_distribution: np.ndarray,
