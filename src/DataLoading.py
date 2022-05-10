@@ -6,6 +6,7 @@ from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
+import ot
 from torch.utils.data import DataLoader
 
 from src.Client import Client, ClientsNetwork
@@ -124,7 +125,10 @@ def get_dataset(dataset_name: str) -> [np.ndarray, np.ndarray]:
             train_dataset = FedTcgaBrca(train=True, pooled=False, center=i)
             data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
             X.append(data.numpy())
-            Y.append(labels.numpy()[:,1])
+            Y.append(labels.numpy()[:,1].reshape(-1, 1))
+
+        # plot_cost_matrix(Y[0], Y[4])
+        # plot_Y_histogram(Y)
         return X, Y, True
 
     elif dataset_name == "heart_disease":
@@ -171,4 +175,25 @@ def load_data(dataset_name: str, nb_clients: int, labels_type: str, recompute: b
         clients_network = ClientsNetwork(dataset_name, clients, central_client, labels_type)
 
     return clients_network
+
+def plot_cost_matrix(distrib1, distrib2):
+    a, b = distrib1.reshape(-1, 1), distrib2.reshape(-1, 1)
+    # use fast 1D solver
+    import ot
+    cost_matrix = ot.dist(a, b)
+
+    # Equivalent to
+    # G0 = ot.emd(a, b, M)
+    import matplotlib.pylab as pl
+    import ot.plot
+    pl.figure(figsize=(5, 5))
+    ot.plot.plot1D_mat(a, b, cost_matrix, 'OT matrix G0')
+    pl.show()
+
+def plot_Y_histogram(distrib):
+    for i in range(len(distrib)):
+        d = distrib[i]
+        plt.hist(d, bins=10, label="client {0}".format(i), alpha=0.5)
+    plt.legend()
+    plt.show()
 

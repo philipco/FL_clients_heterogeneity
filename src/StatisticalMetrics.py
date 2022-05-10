@@ -178,12 +178,20 @@ class StatisticalMetrics:
 
     def plot_Y_metrics(self) -> None:
         plot_name = "Y"
-        self.plot_distance(self.KL_distance_on_Y, r"KL distance for ${0}$".format(plot_name), "{0}_KL".format(plot_name))
-        self.plot_distance(self.TV_distance_on_Y, r"TV distance for ${0}$".format(plot_name), "{0}_TV".format(plot_name))
-        self.plot_histogram(self.KL_distance_on_Y, r"KL distance for ${0}$".format(plot_name),
-                            "{0}_KL".format(plot_name))
-        self.plot_histogram(self.TV_distance_on_Y, r"TV distance for ${0}$".format(plot_name),
-                            "{0}_TV".format(plot_name), symmetric_matrix = True)
+        if self.labels_type == "discrete":
+            self.plot_distance(self.KL_distance_on_Y, r"KL distance for ${0}$".format(plot_name), "{0}_KL".format(plot_name))
+            self.plot_distance(self.TV_distance_on_Y, r"TV distance for ${0}$".format(plot_name), "{0}_TV".format(plot_name))
+            self.plot_histogram(self.KL_distance_on_Y, r"KL distance for ${0}$".format(plot_name),
+                                "{0}_KL".format(plot_name))
+            self.plot_histogram(self.TV_distance_on_Y, r"TV distance for ${0}$".format(plot_name),
+                                "{0}_TV".format(plot_name), symmetric_matrix = True)
+        elif self.labels_type == "continuous":
+            self.plot_distance(self.EM_distance_on_Y, r"Sinkhorn distance for ${0}$".format(plot_name),
+                               "{0}".format(plot_name))
+            self.plot_histogram(self.EM_distance_on_Y, r"Sinkhorn distance for ${0}$".format(plot_name),
+                                "{0}".format(plot_name), symmetric_matrix=True)
+        else:
+            raise ValueError("Unrecognized labels type.")
 
     def plot_X_metrics(self) -> None:
         plot_name = "X"
@@ -203,20 +211,24 @@ class StatisticalMetrics:
                                     "$X|Y=$", symmetric_matrix=True)
 
     def plot_Y_given_X_metrics(self) -> None:
-        for x in range(NB_CLUSTER_ON_CONTINUOUS_VAR):
-            plot_name = r"Y|X={0}".format(x)
-            self.plot_distance(self.KL_distance_on_Y_given_X[x], r"KL distance for ${0}$".format(plot_name),
-                               "{0}_KL".format(plot_name))
-            self.plot_distance(self.TV_distance_on_Y_given_X[x], r"TV distance for ${0}$".format(plot_name),
-                               "{0}_TV".format(plot_name))
-            self.plot_histogram(self.KL_distance_on_Y_given_X[x], r"KL distance for ${0}$".format(plot_name),
-                                "{0}_KL".format(plot_name))
-            self.plot_histogram(self.TV_distance_on_Y_given_X[x], r"TV distance for ${0}$".format(plot_name),
-                                "{0}_TV".format(plot_name), symmetric_matrix = True)
+        if self.labels_type == "discrete":
+            for x in range(NB_CLUSTER_ON_CONTINUOUS_VAR):
+                plot_name = r"Y|X={0}".format(x)
+                self.plot_distance(self.KL_distance_on_Y_given_X[x], r"KL distance for ${0}$".format(plot_name),
+                                   "{0}_KL".format(plot_name))
+                self.plot_distance(self.TV_distance_on_Y_given_X[x], r"TV distance for ${0}$".format(plot_name),
+                                   "{0}_TV".format(plot_name))
+                self.plot_histogram(self.KL_distance_on_Y_given_X[x], r"KL distance for ${0}$".format(plot_name),
+                                    "{0}_KL".format(plot_name))
+                self.plot_histogram(self.TV_distance_on_Y_given_X[x], r"TV distance for ${0}$".format(plot_name),
+                                    "{0}_TV".format(plot_name), symmetric_matrix = True)
 
-        self.plot_grouped_histogram(self.KL_distance_on_Y_given_X, r"KL distance for $Y|X$", "Y|X_KL",
-                                    "$Y|X=$")
-        self.plot_grouped_histogram(self.TV_distance_on_Y_given_X, r"TV distance for $Y|X$", "Y|X_TV",
-                                    "$Y|X=$", symmetric_matrix=True)
+            self.plot_grouped_histogram(self.KL_distance_on_Y_given_X, r"KL distance for $Y|X$", "Y|X_KL",
+                                        "$Y|X=$")
+            self.plot_grouped_histogram(self.TV_distance_on_Y_given_X, r"TV distance for $Y|X$", "Y|X_TV",
+                                        "$Y|X=$", symmetric_matrix=True)
+
+        else:
+            raise ValueError("Unrecognized labels type.")
 
 
