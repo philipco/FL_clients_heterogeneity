@@ -25,15 +25,29 @@ def compute_TV_distance(distrib1: np.ndarray, distrib2: np.ndarray) -> float:
     return 0.5 * np.sum([np.abs(distrib1[i] - distrib2[i]) for i in range(N)])
 
 
-def compute_EM_distance(distrib1: np.ndarray, distrib2: np.ndarray) -> float:
+def sub_sample(distrib, nb_sample):
+    if nb_sample == distrib.shape[0]:
+        return distrib
+    idx = np.random.randint(distrib.shape[0], size=nb_sample)
+    return distrib[idx, :]
+
+
+def compute_EM_distance(distrib1: np.ndarray, distrib2: np.ndarray, stochastic: bool) -> float:
     """Earth's mover."""
-    cost_matrix = ot.dist(distrib1, distrib2)
     assert len(distrib1) >= 1 and len(distrib2) >= 1, "Distributions must not be empty."
-    # Sinkhorn is much faster than ot.emd2.
-    # ot.emd2 throws a warning on precision.
-    # TODO : what is the best choice of regularization ?
-    a, b = ot.unif(len(distrib1)), ot.unif(len(distrib2))  # uniform distribution on samples
-    return ot.emd2(a, b, cost_matrix)  # Wasserstein distance / EMD value
+    nb_sample1, nb_sample2 = distrib1.shape[0], distrib2.shape[0]
+    nb_iteration = 20 if stochastic else 1
+    batch_size1, batch_size2 = nb_sample1 // nb_iteration, nb_sample2 // nb_iteration
+    minibatch_emd = []
+
+    for k in range(nb_iteration):
+        sub_distrib1 = sub_sample(distrib1, batch_size1)
+        sub_distrib2 = sub_sample(distrib2, batch_size2)
+
+        cost_matrix = ot.dist(sub_distrib1, sub_distrib2)
+        a, b = ot.unif(len(sub_distrib1)), ot.unif(len(sub_distrib2))  # uniform distribution on samples
+        minibatch_emd.append(ot.emd2(a, b, cost_matrix))  # Wasserstein distance / EMD value
+    return np.average(minibatch_emd)
 
 
 def compute_metrics_on_continuous_var(nb_clients: int, centralized_distribution: np.ndarray,
@@ -41,21 +55,23 @@ def compute_metrics_on_continuous_var(nb_clients: int, centralized_distribution:
                                       non_iid_clients_distributions: List[np.ndarray]) -> Distance:
 
     EM_distance_on_X = Distance(nb_clients)
+    stochastic_emd = False if max([distrib.shape[0] for distrib in non_iid_clients_distributions]) <= 1000 else True
+
 
     # Compute Earth Mover's distance
-    for i in range(nb_clients):
-        EM_distance_iid = compute_EM_distance(iid_clients_distributions[i],
-                                              centralized_distribution)
-        EM_distance_non_iid = compute_EM_distance(non_iid_clients_distributions[i],
-                                                  centralized_distribution)
-        EM_distance_on_X.set_distance_to_centralized(i, EM_distance_iid, EM_distance_non_iid)
+    # for i in tqdm(range(nb_clients)):
+    #     EM_distance_iid = compute_EM_distance(iid_clients_distributions[i],
+    #                                           centralized_distribution)
+    #     EM_distance_non_iid = compute_EM_distance(non_iid_clients_distributions[i],
+    #                                               centralized_distribution)
+    #     EM_distance_on_X.set_distance_to_centralized(i, EM_distance_iid, EM_distance_non_iid)
 
-    for i in range(nb_clients):
+    for i in tqdm(range(nb_clients)):
         for j in range(i, nb_clients):
             EM_distance_iid = compute_EM_distance(iid_clients_distributions[i],
-                                                  iid_clients_distributions[j])
+                                                  iid_clients_distributions[j], stochastic_emd)
             EM_distance_non_iid = compute_EM_distance(non_iid_clients_distributions[i],
-                                                      non_iid_clients_distributions[j])
+                                                      non_iid_clients_distributions[j], stochastic_emd)
             EM_distance_on_X.set_distance_one_to_one(i, j, EM_distance_iid, EM_distance_non_iid)
             EM_distance_on_X.set_distance_one_to_one(j, i, EM_distance_iid, EM_distance_non_iid)
 

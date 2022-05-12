@@ -186,28 +186,28 @@ class StatisticalMetrics:
             self.plot_histogram(self.TV_distance_on_Y, r"TV distance for ${0}$".format(plot_name),
                                 "{0}_TV".format(plot_name), symmetric_matrix = True)
         elif self.labels_type == "continuous":
-            self.plot_distance(self.EM_distance_on_Y, r"Sinkhorn distance for ${0}$".format(plot_name),
+            self.plot_distance(self.EM_distance_on_Y, r"Wasserstein distance for ${0}$".format(plot_name),
                                "{0}".format(plot_name))
-            self.plot_histogram(self.EM_distance_on_Y, r"Sinkhorn distance for ${0}$".format(plot_name),
+            self.plot_histogram(self.EM_distance_on_Y, r"Wasserstein distance for ${0}$".format(plot_name),
                                 "{0}".format(plot_name), symmetric_matrix=True)
         else:
             raise ValueError("Unrecognized labels type.")
 
     def plot_X_metrics(self) -> None:
         plot_name = "X"
-        self.plot_distance(self.EM_distance_on_X, r"Sinkhorn distance for ${0}$".format(plot_name),
+        self.plot_distance(self.EM_distance_on_X, r"Wasserstein distance for ${0}$".format(plot_name),
                            "{0}".format(plot_name))
-        self.plot_histogram(self.EM_distance_on_X, r"Sinkhorn distance for ${0}$".format(plot_name),
+        self.plot_histogram(self.EM_distance_on_X, r"Wasserstein distance for ${0}$".format(plot_name),
                             "{0}".format(plot_name), symmetric_matrix=True)
 
     def plot_X_given_Y_metrics(self) -> None:
         for y in range(self.nb_labels):
             plot_name = r"X|Y={0}".format(y)
-            self.plot_distance(self.EM_distance_on_X_given_Y[y], r"Sinkhorn distance for ${0}$".format(plot_name),
+            self.plot_distance(self.EM_distance_on_X_given_Y[y], r"Wasserstein distance for ${0}$".format(plot_name),
                                "{0}".format(plot_name))
-            self.plot_histogram(self.EM_distance_on_X_given_Y[y], r"Sinkhorn distance for ${0}$".format(plot_name),
+            self.plot_histogram(self.EM_distance_on_X_given_Y[y], r"Wasserstein distance for ${0}$".format(plot_name),
                                 "{0}".format(plot_name), symmetric_matrix=True)
-        self.plot_grouped_histogram(self.EM_distance_on_X_given_Y, r"Sinkhorn distance for $X|Y$", "X|Y",
+        self.plot_grouped_histogram(self.EM_distance_on_X_given_Y, r"Wasserstein distance for $X|Y$", "X|Y",
                                     "$X|Y=$", symmetric_matrix=True)
 
     def plot_Y_given_X_metrics(self) -> None:

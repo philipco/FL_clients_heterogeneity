@@ -8,10 +8,10 @@ from src.StatisticalMetrics import StatisticalMetrics
 from src.Utilities import print_mem_usage
 
 
-DATASET_NAME = "tcga_brca"
+DATASET_NAME = "mnist"
 
 
-NB_RUNS = 20
+NB_RUNS = 5
 
 
 if __name__ == '__main__':
