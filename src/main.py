@@ -2,16 +2,14 @@
 import matplotlib.pyplot as plt
 
 from src.ComputeDistance import *
+from src.Constants import NB_CLIENTS, NB_LABELS, LABELS_TYPE
 from src.DataLoading import load_data
 from src.StatisticalMetrics import StatisticalMetrics
 from src.Utilities import print_mem_usage
 
-NB_CLIENTS = {"mnist": 20, "fashion_mnist": 10, "tcga_brca": 6, "heart_disease": 4, "isic": 6}
 
 DATASET_NAME = "tcga_brca"
 
-NB_LABELS = {"mnist": 10, "fashion_mnist": 10, "tcga_brca": 2, "heart_disease": 2, "isic": 8}
-LABELS_TYPE = {"mnist": "discrete", "fashion_mnist": "discrete", "tcga_brca": "continuous", "heart_disease": "discrete", "isic": "discrete"}
 
 NB_RUNS = 20
 

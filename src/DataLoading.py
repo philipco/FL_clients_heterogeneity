@@ -10,6 +10,7 @@ import ot
 from torch.utils.data import DataLoader
 
 from src.Client import Client, ClientsNetwork
+from src.Constants import NB_CLIENTS
 from src.PickleHandler import pickle_loader
 
 DIRICHLET_COEF = 0.5
@@ -69,6 +70,7 @@ def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, nb_lab
             X, Y = iid_split(data, labels, nb_clients)
         else:
             X, Y = dirichlet_split(data, labels, nb_clients, dirichlet_coef=DIRICHLET_COEF)
+    # TODO
     # assert [len(np.unique(y)) for y in Y] == [nb_labels for y in Y], "Some labels are not represented on some clients."
     PCA_size = min(PCA_NB_COMPONENTS, min([len(x) for x in X]))
     for i in range(nb_clients):
@@ -101,7 +103,7 @@ def get_dataset(dataset_name: str) -> [np.ndarray, np.ndarray]:
         import datasets
         from datasets.fed_isic2019.dataset import FedIsic2019
         X, Y = [], []
-        for i in range(2):
+        for i in range(NB_CLIENTS[dataset_name]):
             train_dataset = FedIsic2019(train=True, pooled=False, center=i)
             data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
             X.append(data.numpy())
@@ -121,7 +123,7 @@ def get_dataset(dataset_name: str) -> [np.ndarray, np.ndarray]:
         import fed_tcga_brca
         from datasets.fed_tcga_brca.dataset import FedTcgaBrca
         X, Y = [], []
-        for i in range(6):
+        for i in range(NB_CLIENTS[dataset_name]):
             train_dataset = FedTcgaBrca(train=True, pooled=False, center=i)
             data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
             X.append(data.numpy())
@@ -138,7 +140,7 @@ def get_dataset(dataset_name: str) -> [np.ndarray, np.ndarray]:
         import datasets
         from datasets.fed_heart_disease.dataset import FedHeartDisease
         X, Y = [], []
-        for i in range(4):
+        for i in range(NB_CLIENTS[dataset_name]):
             train_dataset = FedHeartDisease(train=True, pooled=False, center=i)
             data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
             X.append(data.numpy())
@@ -188,6 +190,8 @@ def plot_cost_matrix(distrib1, distrib2):
     import ot.plot
     pl.figure(figsize=(5, 5))
     ot.plot.plot1D_mat(a, b, cost_matrix, 'OT matrix G0')
+    a, b = ot.unif(len(distrib1)), ot.unif(len(distrib2))  # uniform distribution on samples
+    print(ot.emd2(a, b, cost_matrix))
     pl.show()
 
 def plot_Y_histogram(distrib):
