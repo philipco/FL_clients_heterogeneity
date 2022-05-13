@@ -39,7 +39,9 @@ class Client:
         self.X = X
         # self.X_TSNE = self.compute_TSNE(self.X)
 
-        if self.X.shape[1] <= 20:
+        # If there is less than 20 elements, or less that 20 dimensions.
+        # There is less than 20 elements for Camelyon in debug mode.
+        if self.X.shape[1] <= 20 or self.X.shape[0] <= 20:
             scaler = preprocessing.StandardScaler().fit(self.X)
             self.X_lower_dim = scaler.transform(self.X)
         else:
