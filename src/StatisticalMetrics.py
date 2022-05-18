@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable, axes_size
 
 import matplotlib
+from sklearn.preprocessing import MinMaxScaler
 
 matplotlib.rcParams.update({
     "pgf.texsystem": "pdflatex",
@@ -17,7 +18,7 @@ matplotlib.rcParams.update({
 })
 
 from src.Client import NB_CLUSTER_ON_CONTINUOUS_VAR
-from src.Distance import Distance, DistanceForSeveralRuns
+from src.Distance import Distance, DistanceForSeveralRuns, remove_diagonal, create_matrix_with_zeros_diagonal_from_array
 from src.PickleHandler import pickle_saver
 from src.Utilities import create_folder_if_not_existing
 
@@ -142,7 +143,7 @@ class StatisticalMetrics:
         plt.suptitle(suptitle, fontsize ='xx-large', weight ='extra bold')
         plt.savefig('{0}/{1}_grouped_hist.png'.format(self.metrics_folder, plot_name), dvi=1000, bbox_inches='tight')
 
-    def plot_distance(self, distance: DistanceForSeveralRuns, suptitle: str, plot_name: str) -> None:
+    def plot_distance(self, distance: DistanceForSeveralRuns, suptitle: str, plot_name: str, scale: bool) -> None:
 
         if distance.is_empty(): return
 
@@ -153,12 +154,33 @@ class StatisticalMetrics:
         axes = [ax1, ax2]
 
         iid_distance_one_to_one, non_iid_distance_one_to_one = distance.get_avg_distance_one_to_one()
-        matrix_to_plot = [iid_distance_one_to_one, non_iid_distance_one_to_one]
+        matrix_to_plot = [iid_distance_one_to_one,
+                          non_iid_distance_one_to_one]
 
-        one_to_one_min = min(min(iid_distance_one_to_one.flatten()),
-                             min(non_iid_distance_one_to_one.flatten()))
-        one_to_one_max = max(max(iid_distance_one_to_one.flatten()),
-                             max(non_iid_distance_one_to_one.flatten()))
+        if not (np.diag(matrix_to_plot[0]) < 10e-6).all():
+            print("The diagonal of the iid distance's matrix is not null")
+        if not (np.diag(matrix_to_plot[1]) < 10e-6).all():
+            print("The diagonal of the non-iid distance's matrix is not null")
+
+        if scale:
+            print("Min-Max scaling before plotting ...")
+            scaler = MinMaxScaler()
+
+            scaler.fit(np.concatenate(np.array([remove_diagonal(matrix_to_plot[0], symmetric_matrix=False),
+                       remove_diagonal(matrix_to_plot[1], symmetric_matrix=False)])).reshape(-1, 1))
+
+            matrix_to_plot[0] = create_matrix_with_zeros_diagonal_from_array(
+                scaler.transform(
+                    remove_diagonal(matrix_to_plot[0], False).reshape(-1, 1)))
+
+            matrix_to_plot[1] = create_matrix_with_zeros_diagonal_from_array(
+                scaler.transform(
+                    remove_diagonal(matrix_to_plot[1], False).reshape(-1, 1)))
+
+        one_to_one_min = min(min(matrix_to_plot[0].flatten()),
+                             min(matrix_to_plot[1].flatten()))
+        one_to_one_max = max(max(matrix_to_plot[0].flatten()),
+                             max(matrix_to_plot[1].flatten()))
 
         im1 = axes[0].imshow(matrix_to_plot[0], vmin=one_to_one_min, vmax=one_to_one_max, aspect="auto", cmap='Blues')
         im2 = axes[1].imshow(matrix_to_plot[1], vmin=one_to_one_min, vmax=one_to_one_max, aspect="auto", cmap='Blues')
@@ -173,21 +195,24 @@ class StatisticalMetrics:
         fig.colorbar(im2, ax=axes[1], cax=cax)
 
         axes[1].get_yaxis().set_visible(False)
-        plt.suptitle(suptitle, fontsize='xx-large', weight='extra bold')
+        plt.suptitle("{0} for {1}".format(suptitle, self.metrics_folder.split("/")[-2]), fontsize='xx-large',
+                     weight='extra bold')
         plt.savefig('{0}/{1}.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
 
     def plot_Y_metrics(self) -> None:
         plot_name = "Y"
         if self.labels_type == "discrete":
-            self.plot_distance(self.KL_distance_on_Y, r"KL distance for ${0}$".format(plot_name), "{0}_KL".format(plot_name))
-            self.plot_distance(self.TV_distance_on_Y, r"TV distance for ${0}$".format(plot_name), "{0}_TV".format(plot_name))
+            self.plot_distance(self.KL_distance_on_Y, r"KL distance for ${0}$".format(plot_name),
+                               "{0}_KL".format(plot_name), scale=False)
+            self.plot_distance(self.TV_distance_on_Y, r"TV distance for ${0}$".format(plot_name),
+                               "{0}_TV".format(plot_name), scale=False)
             self.plot_histogram(self.KL_distance_on_Y, r"KL distance for ${0}$".format(plot_name),
                                 "{0}_KL".format(plot_name))
             self.plot_histogram(self.TV_distance_on_Y, r"TV distance for ${0}$".format(plot_name),
                                 "{0}_TV".format(plot_name), symmetric_matrix = True)
         elif self.labels_type == "continuous":
             self.plot_distance(self.EM_distance_on_Y, r"Wasserstein distance for ${0}$".format(plot_name),
-                               "{0}".format(plot_name))
+                               "{0}".format(plot_name), scale=True)
             self.plot_histogram(self.EM_distance_on_Y, r"Wasserstein distance for ${0}$".format(plot_name),
                                 "{0}".format(plot_name), symmetric_matrix=True)
         else:
@@ -196,7 +221,7 @@ class StatisticalMetrics:
     def plot_X_metrics(self) -> None:
         plot_name = "X"
         self.plot_distance(self.EM_distance_on_X, r"Wasserstein distance for ${0}$".format(plot_name),
-                           "{0}".format(plot_name))
+                           "{0}".format(plot_name), scale=True)
         self.plot_histogram(self.EM_distance_on_X, r"Wasserstein distance for ${0}$".format(plot_name),
                             "{0}".format(plot_name), symmetric_matrix=True)
 
