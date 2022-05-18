@@ -8,7 +8,7 @@ from src.StatisticalMetrics import StatisticalMetrics
 from src.Utilities import print_mem_usage
 
 
-DATASET_NAME = "mnist"
+DATASET_NAME = "isic2019"
 
 
 NB_RUNS = 5

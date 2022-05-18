@@ -82,7 +82,7 @@ class Client:
     def compute_X_given_Y_distribution(self, labels_type: str) -> np.ndarray:
         if labels_type == "discrete":
             distrib = [self.X_lower_dim[self.Y == y] for y in range(self.nb_labels)]
-            assert [len(x) > 0 for x in distrib] == [True for x in distrib], "X|Y, some labels are missing."
+            # assert [len(x) > 0 for x in distrib] == [True for x in distrib], "X|Y, some labels are missing."
         elif labels_type == "continuous":
             distrib = [self.X_lower_dim[self.Y_clusters == y] for y in range(NB_CLUSTER_ON_CONTINUOUS_VAR)]
             # Je ne peux pas garantir que touts les clusters de Y seront bien sur chaque machine ...

@@ -1,9 +1,9 @@
 """Created by Constantin Philippenko, 4th April 2022."""
 import random
 import sys
-from os import path
 from typing import List
 
+import albumentations
 import matplotlib.pyplot as plt
 import numpy as np
 import ot
@@ -122,11 +122,21 @@ def get_dataset(dataset_name: str) -> [np.ndarray, np.ndarray]:
         import datasets
         from datasets.fed_isic2019.dataset import FedIsic2019
         X, Y = [], []
+        nb_of_client = 1 if DEBUG else NB_CLIENTS[dataset_name]
+        sz = 200
+        train_aug = albumentations.Compose(
+            [
+                albumentations.RandomCrop(sz, sz),
+                albumentations.Normalize(always_apply=True),
+            ]
+        )
         for i in range(NB_CLIENTS[dataset_name]):
-            train_dataset = FedIsic2019(train=True, pooled=False, center=i)
+            print(i)
+            train_dataset = FedIsic2019(train=True, pooled=False, center=i, augmentations=train_aug)
             data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
-            X.append(data.numpy())
-            Y.append(np.concatenate(labels.numpy()))
+            print(data.shape)
+            X.append(data.reshape(data.shape[0], data.shape[1] * data.shape[2] * data.shape[3]).numpy())
+            Y.append(labels.numpy())
         return X, Y, True
 
     elif dataset_name == "tcga_brca":
