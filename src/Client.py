@@ -39,7 +39,9 @@ class Client:
         self.X = X
         # self.X_TSNE = self.compute_TSNE(self.X)
 
-        if self.X.shape[1] <= 20:
+        # If there is less than 20 elements, or less that 20 dimensions.
+        # There is less than 20 elements for Camelyon in debug mode.
+        if self.X.shape[1] <= 20 or self.X.shape[0] <= 20:
             scaler = preprocessing.StandardScaler().fit(self.X)
             self.X_lower_dim = scaler.transform(self.X)
         else:
@@ -80,7 +82,7 @@ class Client:
     def compute_X_given_Y_distribution(self, labels_type: str) -> np.ndarray:
         if labels_type == "discrete":
             distrib = [self.X_lower_dim[self.Y == y] for y in range(self.nb_labels)]
-            assert [len(x) > 0 for x in distrib] == [True for x in distrib], "X|Y, some labels are missing."
+            # assert [len(x) > 0 for x in distrib] == [True for x in distrib], "X|Y, some labels are missing."
         elif labels_type == "continuous":
             distrib = [self.X_lower_dim[self.Y_clusters == y] for y in range(NB_CLUSTER_ON_CONTINUOUS_VAR)]
             # Je ne peux pas garantir que touts les clusters de Y seront bien sur chaque machine ...

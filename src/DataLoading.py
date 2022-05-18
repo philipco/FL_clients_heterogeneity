@@ -1,16 +1,16 @@
 """Created by Constantin Philippenko, 4th April 2022."""
 import random
 import sys
-from os import path
 from typing import List
 
+import albumentations
 import matplotlib.pyplot as plt
 import numpy as np
 import ot
 from torch.utils.data import DataLoader
 
 from src.Client import Client, ClientsNetwork
-from src.Constants import NB_CLIENTS
+from src.Constants import NB_CLIENTS, DEBUG
 from src.PickleHandler import pickle_loader
 
 DIRICHLET_COEF = 0.5
@@ -96,6 +96,25 @@ def get_dataset(dataset_name: str) -> [np.ndarray, np.ndarray]:
         mnist_label = mnist.train_labels.numpy()
         return mnist_data, mnist_label, False
 
+    elif dataset_name == "camelyon16":
+        sys.path.insert(0, '/home/constantin/Github/FLamby')
+        import flamby
+        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
+        import datasets
+        from datasets.fed_camelyon16.dataset import FedCamelyon16, collate_fn
+        X, Y = [], []
+        nb_of_client = 1 if DEBUG else NB_CLIENTS[dataset_name]
+        for i in range(nb_of_client):
+            train_dataset = FedCamelyon16(train=True, pooled=False, center=i, debug=DEBUG)
+            training_dataloader = DataLoader(train_dataset, batch_size=len(train_dataset), collate_fn=collate_fn)
+            for s, (data, labels) in enumerate(training_dataloader):
+                X.append(data.reshape(data.shape[0], data.shape[1] * data.shape[2]).numpy())
+                Y.append(np.concatenate(labels.numpy()))
+        # In debug mode, there is only 5 pictures from the first center.
+        if DEBUG:
+            X, Y = [X[0][:2], X[0][2:]], [Y[0][:2], Y[0][2:]]
+        return X, Y, True
+
     elif dataset_name == "isic2019":
         sys.path.insert(0, '/home/constantin/Github/FLamby')
         import flamby
@@ -103,12 +122,22 @@ def get_dataset(dataset_name: str) -> [np.ndarray, np.ndarray]:
         import datasets
         from datasets.fed_isic2019.dataset import FedIsic2019
         X, Y = [], []
+        nb_of_client = 1 if DEBUG else NB_CLIENTS[dataset_name]
+        sz = 200
+        train_aug = albumentations.Compose(
+            [
+                albumentations.RandomCrop(sz, sz),
+                albumentations.Normalize(always_apply=True),
+            ]
+        )
         for i in range(NB_CLIENTS[dataset_name]):
-            train_dataset = FedIsic2019(train=True, pooled=False, center=i)
+            print(i)
+            train_dataset = FedIsic2019(train=True, pooled=False, center=i, augmentations=train_aug)
             data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
-            X.append(data.numpy())
-            Y.append(np.concatenate(labels.numpy()))
-        return X, Y, True  # TODO : weird labels size
+            print(data.shape)
+            X.append(data.reshape(data.shape[0], data.shape[1] * data.shape[2] * data.shape[3]).numpy())
+            Y.append(labels.numpy())
+        return X, Y, True
 
     elif dataset_name == "tcga_brca":
         sys.path.insert(0, '/home/constantin/Github/FLamby')
