@@ -78,7 +78,6 @@ class Client:
         else:
             raise ValueError("Unrecognized labels type.")
 
-
     def compute_X_given_Y_distribution(self, labels_type: str) -> np.ndarray:
         if labels_type == "discrete":
             distrib = [self.X_lower_dim[self.Y == y] for y in range(self.nb_labels)]
@@ -133,10 +132,20 @@ class ClientsNetwork:
         # Now that all clients, and also the centralized client are ready, we can compute the Y|X distribution.
         # To compute Y given X distribution, we need to first compute X cluster on complete distribution.
         self.labels_type = labels_type
-        self.compute_Y_given_X_distribution()
-        self.compute_X_given_Y_distribution()
+        # self.compute_Y_given_X_distribution()
+        # self.compute_X_given_Y_distribution()
 
         self.save_itself()
+
+    def print_Y_distribution(self, ):
+            # fig, axes = plt.subplots(2, 1)
+        for idx in range(len(self.clients)):
+            plt.plot(np.sort(self.clients[idx].Y), label=idx)
+        plt.xlabel("Nb of points")
+        plt.ylabel("Cluster")
+        plt.title("Client labels distribution")
+        plt.legend()
+        plt.show()
 
     def save_itself(self) -> None:
         create_folder_if_not_existing("pickle/{0}".format(self.dataset_name))
