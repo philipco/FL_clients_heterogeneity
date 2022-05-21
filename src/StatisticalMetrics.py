@@ -91,6 +91,9 @@ class StatisticalMetrics:
         else:
             raise ValueError("Unrecognized labels type.")
 
+    def set_nb_points_by_non_iid_clients(self, nb_points_by_non_iid_clients):
+        self.nb_points_by_non_iid_clients = nb_points_by_non_iid_clients
+
     def plot_histogram(self, distance: DistanceForSeveralRuns, suptitle: str, plot_name: str,
                        symmetric_matrix: bool = False) -> None:
 
@@ -182,10 +185,40 @@ class StatisticalMetrics:
         one_to_one_max = max(max(matrix_to_plot[0].flatten()),
                              max(matrix_to_plot[1].flatten()))
 
-        im1 = axes[0].imshow(matrix_to_plot[0], vmin=one_to_one_min, vmax=one_to_one_max, aspect="auto", cmap='Blues')
-        im2 = axes[1].imshow(matrix_to_plot[1], vmin=one_to_one_min, vmax=one_to_one_max, aspect="auto", cmap='Blues')
+        kwargs = dict(origin='lower', vmin=one_to_one_min, vmax=one_to_one_max, aspect="auto", cmap='Blues')
+        im1 = axes[0].imshow(matrix_to_plot[0], **kwargs)
+        x_non_iid = 0
+        total_nb_of_points = np.sum(self.nb_points_by_non_iid_clients)
+        xticks, yticks = [], []
+        for x in range(self.nb_clients):
+            y_non_iid = 0
+            for y in range(self.nb_clients):#-1, -1, -1):
+                data1 = matrix_to_plot[1][x:x + 1, y:y+1]
+                size_x = self.nb_points_by_non_iid_clients[x] / total_nb_of_points * self.nb_clients
+                size_y = self.nb_points_by_non_iid_clients[y] / total_nb_of_points * self.nb_clients
+                im2 = axes[1].imshow(data1, extent=[x_non_iid, x_non_iid + size_x, y_non_iid, y_non_iid + size_y],
+                                     **kwargs)
+
+                y_non_iid += size_y
+                if len(yticks) != self.nb_clients:
+                    yticks.append(y_non_iid+ size_y / 2)
+            xticks.append(x_non_iid + size_x / 2)
+            x_non_iid += size_x
         axes[0].set_title(label=TITLES[0])
         axes[1].set_title(label=TITLES[1])
+
+        # set the axis limits
+        axes[1].set_ylim(0, self.nb_clients)
+        axes[1].set_xlim(0, self.nb_clients)
+        axes[1].set_yticks(xticks)
+        axes[1].set_xticks(xticks)
+
+        axes[0].set_xticks(np.arange(self.nb_clients))
+        axes[0].set_yticks(np.arange(self.nb_clients))
+
+        for ax in axes:
+            ax.set_xticklabels([str(i) for i in range(self.nb_clients)])
+            ax.set_yticklabels([str(i) for i in range(self.nb_clients)])
 
         axes[0].set_xlabel("Client index")
         axes[1].set_xlabel("Client index")
@@ -194,7 +227,7 @@ class StatisticalMetrics:
         cax = divider.append_axes("right", size="6%", pad=0.05)
         fig.colorbar(im2, ax=axes[1], cax=cax)
 
-        axes[1].get_yaxis().set_visible(False)
+        # axes[1].get_yaxis().set_visible(False)
         plt.suptitle("{0} for {1}".format(suptitle, self.metrics_folder.split("/")[-2]), fontsize='xx-large',
                      weight='extra bold')
         plt.savefig('{0}/{1}.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')

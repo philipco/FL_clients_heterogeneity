@@ -48,6 +48,7 @@ if __name__ == '__main__':
     if LABELS_TYPE[DATASET_NAME] == "continuous":
         non_iid_clients_network.print_Y_empirical_distribution_function()
 
+    my_metrics.set_nb_points_by_non_iid_clients(np.array([len(c.Y) for c in non_iid_clients_network.clients]))
     my_metrics.save_itself()
 
     my_metrics.plot_Y_metrics()
