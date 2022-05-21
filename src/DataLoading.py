@@ -203,21 +203,20 @@ def load_data(dataset_name: str, nb_clients: int, labels_type: str, recompute: b
             nb_labels = len(np.unique(labels))
 
         # The label of "TCGA-BRCA is continuous, so we must clusterize them."
-        if dataset_name == "tcga_brca":
-            bandwidth = estimate_bandwidth(np.concatenate(labels), quantile=0.2, n_samples=500)
-            labels_knn = MeanShift(bandwidth=bandwidth, bin_seeding=True)
-            labels_knn.fit(np.concatenate(labels))
-            clients, PCA_size = create_clients(nb_clients, data, labels, nb_labels, splitted, labels_type, iid=iid, predictor=labels_knn)
-        else:
-            clients, PCA_size = create_clients(nb_clients, data, labels, nb_labels, splitted, labels_type, iid=iid)
+        # if dataset_name == "tcga_brca":
+        #     bandwidth = estimate_bandwidth(np.concatenate(labels), quantile=0.2, n_samples=500)
+        #     labels_knn = MeanShift(bandwidth=bandwidth, bin_seeding=True)
+        #     labels_knn.fit(np.concatenate(labels))
+        #     clients, PCA_size = create_clients(nb_clients, data, labels, nb_labels, splitted, labels_type, iid=iid, predictor=labels_knn)
+        # else:
+        clients, PCA_size = create_clients(nb_clients, data, labels, nb_labels, splitted, labels_type, iid=iid)
         if splitted:
             central_client = Client("central", np.concatenate(data), np.concatenate(labels), nb_labels, PCA_size,
                                     labels_type)
         else:
             central_client = Client("central", data, labels, nb_labels, PCA_size, labels_type)
 
-        clients_network = ClientsNetwork(dataset_name, clients, central_client, labels_type)
-        # clients_network.print_Y_distribution()
+        clients_network = ClientsNetwork(dataset_name, clients, central_client, labels_type, iid)
 
     return clients_network
 
