@@ -20,7 +20,7 @@ matplotlib.rcParams.update({
 from src.Client import NB_CLUSTER_ON_CONTINUOUS_VAR
 from src.Distance import Distance, DistanceForSeveralRuns, remove_diagonal, create_matrix_with_zeros_diagonal_from_array
 from src.PickleHandler import pickle_saver
-from src.Utilities import create_folder_if_not_existing
+from src.Utilities import create_folder_if_not_existing, save_matrix
 
 TITLES = ["IID", "NON-IID"]
 COLORS = ["tab:blue", "tab:orange"]
@@ -231,6 +231,8 @@ class StatisticalMetrics:
         plt.suptitle("{0} for {1}".format(suptitle, self.metrics_folder.split("/")[-2]), fontsize='xx-large',
                      weight='extra bold')
         plt.savefig('{0}/{1}.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
+        np.savetxt('{0}/{1}-iid.txt'.format(self.metrics_folder, plot_name), matrix_to_plot[0], delimiter=',')
+        np.savetxt('{0}/{1}-non_iid.txt'.format(self.metrics_folder, plot_name), matrix_to_plot[1], delimiter=',')
 
     def plot_Y_metrics(self) -> None:
         plot_name = "Y"
