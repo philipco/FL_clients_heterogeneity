@@ -12,6 +12,8 @@ from sklearn.preprocessing import scale, StandardScaler
 import seaborn as sns
 from typing import List
 
+from statsmodels.distributions import ECDF
+
 from src.PickleHandler import pickle_saver, pickle_loader
 from src.Utilities import create_folder_if_not_existing
 
@@ -78,7 +80,6 @@ class Client:
         else:
             raise ValueError("Unrecognized labels type.")
 
-
     def compute_X_given_Y_distribution(self, labels_type: str) -> np.ndarray:
         if labels_type == "discrete":
             distrib = [self.X_lower_dim[self.Y == y] for y in range(self.nb_labels)]
@@ -122,21 +123,45 @@ class Client:
 
 class ClientsNetwork:
 
-    def __init__(self, dataset_name: str, clients: List[Client], centralized_client: Client, labels_type: str) -> None:
+    def __init__(self, dataset_name: str, clients: List[Client], centralized_client: Client, labels_type: str,
+                 iid: bool) -> None:
         super().__init__()
         self.dataset_name = dataset_name
         self.clients = clients
         self.centralized = centralized_client
         self.nb_clients = len(clients)
         self.min_len_dataset = min([len(client.Y) for client in self.clients])
+        self.iid = iid
+        self.metrics_folder = "pictures/" + self.dataset_name + "/metrics"
 
         # Now that all clients, and also the centralized client are ready, we can compute the Y|X distribution.
         # To compute Y given X distribution, we need to first compute X cluster on complete distribution.
         self.labels_type = labels_type
-        self.compute_Y_given_X_distribution()
-        self.compute_X_given_Y_distribution()
+        # self.compute_Y_given_X_distribution()
+        # self.compute_X_given_Y_distribution()
 
         self.save_itself()
+
+    def print_Y_empirical_distribution_function(self):
+        fig, ax1 = plt.subplots(figsize=(12,8))
+        ax2 = ax1.twinx()
+        bins = np.histogram(np.hstack((np.concatenate(self.clients[idx].Y) for idx in range(len(self.clients)))),
+                            bins=40)[1]
+        for idx in range(len(self.clients)):
+            # fit a cdf
+            distrib_Y = np.concatenate(self.clients[idx].Y)
+            ecdf = ECDF(distrib_Y)
+            ax1.plot(ecdf.x, ecdf.y, label=idx)
+            ax2.hist(distrib_Y, bins=bins, density=False, histtype='step', stacked=True, fill=False, lw=2, label=idx)
+        ax1.set_xlabel("Range of labels' values", fontsize=15)
+        ax2.set_ylabel("Frequency of labels' values", fontsize=15)
+        ax1.set_ylabel("Cumulative probability", fontsize=15)
+        iid_str = "iid" if self.iid else "non-iid"
+        plt.title("Empirical distribution function (left) and histogram (right) for {0} ({1})".format(
+            self.dataset_name, iid_str), fontsize=15
+        )
+        plt.legend()
+        plt.savefig('{0}/{1}.png'.format(self.metrics_folder, "edf"), dvi=600, bbox_inches='tight')
 
     def save_itself(self) -> None:
         create_folder_if_not_existing("pickle/{0}".format(self.dataset_name))

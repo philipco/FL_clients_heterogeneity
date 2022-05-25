@@ -7,6 +7,7 @@ import albumentations
 import matplotlib.pyplot as plt
 import numpy as np
 import ot
+from sklearn.cluster import estimate_bandwidth, MeanShift
 from torch.utils.data import DataLoader
 
 from src.Client import Client, ClientsNetwork
@@ -17,13 +18,15 @@ DIRICHLET_COEF = 0.5
 PCA_NB_COMPONENTS = 10
 
 
-def iid_split(data: np.ndarray, labels: np.ndarray, nb_clients: int) -> [List[np.ndarray], List[np.ndarray]]:
+def iid_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, set_nb_points_by_non_iid_clients: np.array)\
+        -> [List[np.ndarray], List[np.ndarray]]:
     nb_points = len(labels)
     X = []
     Y = []
     indices = np.arange(nb_points)
     np.random.shuffle(indices)
-    split_indices = np.array_split(indices, nb_clients)
+    idx_split = [np.sum(set_nb_points_by_non_iid_clients[:i]) for i in range(1, nb_clients)]
+    split_indices = np.array_split(indices, idx_split)
     for i in range(nb_clients):
         X.append(data[split_indices[i]])
         Y.append(labels[split_indices[i]])
@@ -58,8 +61,9 @@ def dirichlet_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, diric
 
 
 def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, nb_labels: int, split: bool, labels_type: str,
-                   iid: bool = False) -> List[Client]:
+                   iid: bool = False, predictor = None) -> List[Client]:
     clients = []
+    set_nb_points_by_non_iid_clients = np.array([len(y) for y in labels])
     # It the dataset is already split and we don't want to create an iid dataset.
     if split and not iid:
         X, Y = data, labels
@@ -67,14 +71,17 @@ def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, nb_lab
         if split:
             data, labels = np.concatenate(data), np.concatenate(labels)
         if iid:
-            X, Y = iid_split(data, labels, nb_clients)
+            X, Y = iid_split(data, labels, nb_clients, set_nb_points_by_non_iid_clients)
         else:
             X, Y = dirichlet_split(data, labels, nb_clients, dirichlet_coef=DIRICHLET_COEF)
     # TODO
     # assert [len(np.unique(y)) for y in Y] == [nb_labels for y in Y], "Some labels are not represented on some clients."
     PCA_size = min(PCA_NB_COMPONENTS, min([len(x) for x in X]))
     for i in range(nb_clients):
-        clients.append(Client(i, X[i], Y[i], nb_labels, PCA_size, labels_type))
+        if predictor is not None:
+            clients.append(Client(i, X[i], predictor.predict(Y[i]), nb_labels, PCA_size, labels_type))
+        else:
+            clients.append(Client(i, X[i], Y[i], nb_labels, PCA_size, labels_type))
     return clients, PCA_size
 
 
@@ -157,8 +164,10 @@ def get_dataset(dataset_name: str) -> [np.ndarray, np.ndarray]:
             data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
             X.append(data.numpy())
             Y.append(labels.numpy()[:,1].reshape(-1, 1))
-
-        # plot_cost_matrix(Y[0], Y[4])
+        # plot_distrib(Y, 0, 1)
+        # plot_distrib(Y, 0, 2)
+        # plot_distrib(Y, 0, 3)
+        # plot_distrib(Y, 4, 5)
         # plot_Y_histogram(Y)
         return X, Y, True
 
@@ -196,6 +205,13 @@ def load_data(dataset_name: str, nb_clients: int, labels_type: str, recompute: b
         else:
             nb_labels = len(np.unique(labels))
 
+        # The label of "TCGA-BRCA is continuous, so we must clusterize them."
+        # if dataset_name == "tcga_brca":
+        #     bandwidth = estimate_bandwidth(np.concatenate(labels), quantile=0.2, n_samples=500)
+        #     labels_knn = MeanShift(bandwidth=bandwidth, bin_seeding=True)
+        #     labels_knn.fit(np.concatenate(labels))
+        #     clients, PCA_size = create_clients(nb_clients, data, labels, nb_labels, splitted, labels_type, iid=iid, predictor=labels_knn)
+        # else:
         clients, PCA_size = create_clients(nb_clients, data, labels, nb_labels, splitted, labels_type, iid=iid)
         if splitted:
             central_client = Client("central", np.concatenate(data), np.concatenate(labels), nb_labels, PCA_size,
@@ -203,12 +219,27 @@ def load_data(dataset_name: str, nb_clients: int, labels_type: str, recompute: b
         else:
             central_client = Client("central", data, labels, nb_labels, PCA_size, labels_type)
 
-        clients_network = ClientsNetwork(dataset_name, clients, central_client, labels_type)
+        clients_network = ClientsNetwork(dataset_name, clients, central_client, labels_type, iid)
 
     return clients_network
 
+
+def plot_distrib(Y, idx1, idx2):
+    # fig, axes = plt.subplots(2, 1)
+
+    plt.plot(np.sort(np.concatenate(Y[idx1])), label=int(idx1))
+    plt.plot(np.sort(np.concatenate(Y[idx2])), label=int(idx2))
+    plt.xlabel("Nb of points")
+    plt.ylabel("Values")
+    plt.title("Client {0} vs client {1}".format(idx1, idx2))
+    plt.show()
+
+    # axes[0].plot(distrib1)
+    # axes[1].plot(distrib2)
+    # plt.show()
+
 def plot_cost_matrix(distrib1, distrib2):
-    a, b = distrib1.reshape(-1, 1), distrib2.reshape(-1, 1)
+    a, b = np.sort(np.concatenate(distrib1)).reshape(-1, 1), np.sort(np.concatenate(distrib2)).reshape(-1, 1)
     # use fast 1D solver
     import ot
     cost_matrix = ot.dist(a, b)

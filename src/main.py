@@ -8,10 +8,10 @@ from src.StatisticalMetrics import StatisticalMetrics
 from src.Utilities import print_mem_usage
 
 
-DATASET_NAME = "isic2019"
+DATASET_NAME = "tcga_brca"
 
 
-NB_RUNS = 5
+NB_RUNS = 20
 
 
 if __name__ == '__main__':
@@ -45,6 +45,10 @@ if __name__ == '__main__':
         # EM_distance_on_X_given_Y = compute_metrics_on_X_given_Y(iid_clients_network, non_iid_clients_network)
         # my_metrics.set_metrics_on_X_given_Y(EM_distance_on_X_given_Y)
 
+    if LABELS_TYPE[DATASET_NAME] == "continuous":
+        non_iid_clients_network.print_Y_empirical_distribution_function()
+
+    my_metrics.set_nb_points_by_non_iid_clients(np.array([len(c.Y) for c in non_iid_clients_network.clients]))
     my_metrics.save_itself()
 
     my_metrics.plot_Y_metrics()
