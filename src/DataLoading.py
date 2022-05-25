@@ -18,13 +18,15 @@ DIRICHLET_COEF = 0.5
 PCA_NB_COMPONENTS = 10
 
 
-def iid_split(data: np.ndarray, labels: np.ndarray, nb_clients: int) -> [List[np.ndarray], List[np.ndarray]]:
+def iid_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, set_nb_points_by_non_iid_clients: np.array)\
+        -> [List[np.ndarray], List[np.ndarray]]:
     nb_points = len(labels)
     X = []
     Y = []
     indices = np.arange(nb_points)
     np.random.shuffle(indices)
-    split_indices = np.array_split(indices, nb_clients)
+    idx_split = [np.sum(set_nb_points_by_non_iid_clients[:i]) for i in range(1, nb_clients)]
+    split_indices = np.array_split(indices, idx_split)
     for i in range(nb_clients):
         X.append(data[split_indices[i]])
         Y.append(labels[split_indices[i]])
@@ -61,6 +63,7 @@ def dirichlet_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, diric
 def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, nb_labels: int, split: bool, labels_type: str,
                    iid: bool = False, predictor = None) -> List[Client]:
     clients = []
+    set_nb_points_by_non_iid_clients = np.array([len(y) for y in labels])
     # It the dataset is already split and we don't want to create an iid dataset.
     if split and not iid:
         X, Y = data, labels
@@ -68,7 +71,7 @@ def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, nb_lab
         if split:
             data, labels = np.concatenate(data), np.concatenate(labels)
         if iid:
-            X, Y = iid_split(data, labels, nb_clients)
+            X, Y = iid_split(data, labels, nb_clients, set_nb_points_by_non_iid_clients)
         else:
             X, Y = dirichlet_split(data, labels, nb_clients, dirichlet_coef=DIRICHLET_COEF)
     # TODO
