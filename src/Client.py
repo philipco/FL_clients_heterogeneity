@@ -132,7 +132,7 @@ class ClientsNetwork:
         self.nb_clients = len(clients)
         self.min_len_dataset = min([len(client.Y) for client in self.clients])
         self.iid = iid
-        self.metrics_folder = "pictures/" + self.dataset_name + "/metrics"
+        self.metrics_folder = "pictures/" + self.dataset_name
 
         # Now that all clients, and also the centralized client are ready, we can compute the Y|X distribution.
         # To compute Y given X distribution, we need to first compute X cluster on complete distribution.

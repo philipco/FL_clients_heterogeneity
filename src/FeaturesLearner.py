@@ -16,7 +16,7 @@ from src.Utilities import create_folder_if_not_existing
 
 
 BATCH_SIZE = 128
-DATASET_NAME = "mnist"
+DATASET_NAME = "heart_disease"
 
 class TcgaBrcaNet(nn.Module):
 
@@ -188,7 +188,7 @@ def train_network(train_loader: DataLoader, model, optimizer, scheduler, criteri
     create_folder_if_not_existing(model_folder)
 
     pruned_network = remove_last_layer(net)
-    torch.save(pruned_network.state_dict(), model_folder + dataset_name + ".pt")
+    torch.save(pruned_network, model_folder + dataset_name + ".pt")
     return pruned_network
 
 
