@@ -108,17 +108,19 @@ def get_dataset(dataset_name: str, features_learner: bool = True) -> [np.ndarray
         mnist_data, mnist_labels = next(iter(dataloader))
         if features_learner:
             mnist_data = features_representation(mnist_data, dataset_name).detach().numpy()
-        # mnist_data = mnist_data #mnist_data.shape[0], mnist_data.shape[1] * mnist_data.shape[2])
         mnist_labels = mnist_labels.numpy()
         return mnist_data, mnist_labels, False
 
     elif dataset_name == "fashion_mnist":
         from torchvision import datasets
-        mnist_dataset = datasets.FashionMNIST(root='../../DATASETS/FASHION_MNIST', train=True, download=True, transform=None)
-        mnist_data = mnist_dataset.train_data.numpy()
-        mnist_data = mnist_data.reshape(-1) #mnist_data.shape[0], mnist_data.shape[1] * mnist_data.shape[2])
-        mnist_label = mnist_dataset.train_labels.numpy()
-        return mnist_data, mnist_label, False
+        mnist_dataset = datasets.FashionMNIST(root='../../DATASETS/FASHION_MNIST', train=True, download=True,
+                                              transform=None)
+        dataloader = DataLoader(mnist_dataset, batch_size=len(mnist_dataset), shuffle=False)
+        mnist_data, mnist_labels = next(iter(dataloader))
+        if features_learner:
+            mnist_data = features_representation(mnist_data, dataset_name).detach().numpy()
+        mnist_labels = mnist_labels.numpy()
+        return mnist_data, mnist_labels, False
 
     elif dataset_name == "camelyon16":
         sys.path.insert(0, '/home/constantin/Github/FLamby')
@@ -132,6 +134,8 @@ def get_dataset(dataset_name: str, features_learner: bool = True) -> [np.ndarray
             train_dataset = FedCamelyon16(train=True, pooled=False, center=i, debug=DEBUG)
             training_dataloader = DataLoader(train_dataset, batch_size=len(train_dataset), collate_fn=collate_fn)
             for s, (data, labels) in enumerate(training_dataloader):
+                if features_learner:
+                    data = features_representation(data, dataset_name).detach()
                 X.append(data.reshape(data.shape[0], data.shape[1] * data.shape[2]).numpy())
                 Y.append(np.concatenate(labels.numpy()))
         # In debug mode, there is only 5 pictures from the first center.
@@ -158,9 +162,27 @@ def get_dataset(dataset_name: str, features_learner: bool = True) -> [np.ndarray
             print(i)
             train_dataset = FedIsic2019(train=True, pooled=False, center=i, augmentations=train_aug)
             data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
-            print(data.shape)
+            if features_learner:
+                data = features_representation(data, dataset_name).detach()
             X.append(data.reshape(data.shape[0], data.shape[1] * data.shape[2] * data.shape[3]).numpy())
             Y.append(labels.numpy())
+        return X, Y, True
+
+    elif dataset_name == "ixi":
+        sys.path.insert(0, '/home/constantin/Github/FLamby')
+        import flamby
+        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
+        import datasets
+        from datasets.fed_ixi.dataset import FedIXITiny
+        X, Y = [], []
+        for i in range(NB_CLIENTS[dataset_name]):
+            train_dataset = FedIXITiny(train=True, pooled=False, center=i)
+            data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
+            data = data.reshape(data.shape[0], data.shape[1] * data.shape[2] * data.shape[3] * data.shape[4])
+            if features_learner:
+                data = features_representation(data, dataset_name).detach()
+            X.append(data.numpy())
+            Y.append(np.concatenate(labels.numpy()))
         return X, Y, True
 
     elif dataset_name == "tcga_brca":
@@ -200,6 +222,8 @@ def get_dataset(dataset_name: str, features_learner: bool = True) -> [np.ndarray
         for i in range(NB_CLIENTS[dataset_name]):
             train_dataset = FedHeartDisease(train=True, pooled=False, center=i)
             data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
+            if features_learner:
+                data = features_representation(data, dataset_name).detach()
             X.append(data.numpy())
             Y.append(np.concatenate(labels.numpy()))
         return X, Y, True
