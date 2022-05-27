@@ -35,8 +35,9 @@ if __name__ == '__main__':
         my_metrics.set_metrics_on_X(EM_distance_on_X)
 
         ########## Compute metrics on Y ##########
-        metrics_on_Y = compute_metrics_on_Y(iid_clients_network, non_iid_clients_network, LABELS_TYPE[DATASET_NAME])
-        my_metrics.set_metrics_on_Y(metrics_on_Y)
+        if LABELS_TYPE[DATASET_NAME] != "segmentation":
+            metrics_on_Y = compute_metrics_on_Y(iid_clients_network, non_iid_clients_network, LABELS_TYPE[DATASET_NAME])
+            my_metrics.set_metrics_on_Y(metrics_on_Y)
 
         # ########## Compute metrics on Y | X ##########
         # metrics_on_Y_given_X = compute_metrics_on_Y_given_X(iid_clients_network, non_iid_clients_network,
@@ -53,7 +54,9 @@ if __name__ == '__main__':
     my_metrics.set_nb_points_by_non_iid_clients(np.array([len(c.Y) for c in non_iid_clients_network.clients]))
     my_metrics.save_itself()
 
-    my_metrics.plot_Y_metrics()
+
     my_metrics.plot_X_metrics()
+    if LABELS_TYPE[DATASET_NAME] != "segmentation":
+        my_metrics.plot_Y_metrics()
     # my_metrics.plot_X_given_Y_metrics()
     # my_metrics.plot_Y_given_X_metrics()

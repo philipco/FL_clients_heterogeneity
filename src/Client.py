@@ -54,7 +54,8 @@ class Client:
         self.nb_labels = nb_labels
 
         # Distributions that we need to compare between clients.
-        self.Y_distribution = self.compute_Y_distribution(labels_type)
+        if labels_type != "segmentation":
+            self.Y_distribution = self.compute_Y_distribution(labels_type)
 
     def compute_TSNE(self, X: np.ndarray):
         """Compute the TSNE representation of a dataset."""
