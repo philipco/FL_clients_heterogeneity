@@ -56,7 +56,7 @@ class StatisticalMetrics:
             self.EM_distance_on_Y_given_X = [DistanceForSeveralRuns() for i in range(NB_CLUSTER_ON_CONTINUOUS_VAR)]
 
         ############## Metrics on X | Y ##############
-        self.EM_distance_on_X_given_Y = [DistanceForSeveralRuns()  for i in range(self.nb_labels)]
+        # self.EM_distance_on_X_given_Y = [DistanceForSeveralRuns()  for i in range(self.nb_labels)]
 
         create_folder_if_not_existing(self.metrics_folder)
 

@@ -14,9 +14,9 @@ torch.set_printoptions(precision=2)
 
 from src.Utilities import create_folder_if_not_existing
 
-
 BATCH_SIZE = 128
 DATASET_NAME = "heart_disease"
+
 
 class TcgaBrcaNet(nn.Module):
 
@@ -33,6 +33,7 @@ class TcgaBrcaNet(nn.Module):
         x = self.l2(x)
         return x
 
+
 class HeartDiseaseNet(nn.Module):
 
     def __init__(self, input_size, output_size):
@@ -47,6 +48,7 @@ class HeartDiseaseNet(nn.Module):
         x = self.relu(x)
         x = self.l2(x)
         return x
+
 
 class MnistNet(nn.Module):
 

@@ -1,12 +1,12 @@
 """Created by Constantin Philippenko, 4th April 2022."""
 import random
 import sys
+import time
 from typing import List
 
 import albumentations
 import matplotlib.pyplot as plt
 import numpy as np
-import ot
 import torch
 import torchvision
 from torch.utils.data import DataLoader
@@ -21,7 +21,7 @@ PCA_NB_COMPONENTS = 10
 
 def iid_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, nb_points_by_non_iid_clients: np.array)\
         -> [List[np.ndarray], List[np.ndarray]]:
-    nb_points = len(labels)
+    nb_points = data.shape[0]
     X = []
     Y = []
     indices = np.arange(nb_points)
@@ -65,7 +65,7 @@ def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, nb_lab
                    iid: bool = False) -> List[Client]:
     clients = []
     if split:
-        nb_points_by_non_iid_clients = np.array([len(y) for y in labels])
+        nb_points_by_non_iid_clients = np.array([x.shape[0] for x in data])
     else:
         nb_points_by_non_iid_clients = np.array([len(labels) // nb_clients for i in range(nb_clients)])
     # It the dataset is already split and we don't want to create an iid dataset.
@@ -91,7 +91,7 @@ def features_representation(data, dataset_name):
     return model(data)
 
 
-def get_dataset(dataset_name: str, features_learner: bool = True) -> [np.ndarray, np.ndarray]:
+def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarray, np.ndarray]:
 
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
@@ -141,6 +141,22 @@ def get_dataset(dataset_name: str, features_learner: bool = True) -> [np.ndarray
         # In debug mode, there is only 5 pictures from the first center.
         if DEBUG:
             X, Y = [X[0][:2], X[0][2:]], [Y[0][:2], Y[0][2:]]
+        return X, Y, True
+
+    elif dataset_name == "heart_disease":
+        sys.path.insert(0, '/home/constantin/Github/FLamby')
+        import flamby
+        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
+        import datasets
+        from datasets.fed_heart_disease.dataset import FedHeartDisease
+        X, Y = [], []
+        for i in range(NB_CLIENTS[dataset_name]):
+            train_dataset = FedHeartDisease(train=True, pooled=False, center=i)
+            data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
+            if features_learner:
+                data = features_representation(data, dataset_name).detach()
+            X.append(data.numpy())
+            Y.append(np.concatenate(labels.numpy()))
         return X, Y, True
 
     elif dataset_name == "isic2019":
@@ -212,22 +228,6 @@ def get_dataset(dataset_name: str, features_learner: bool = True) -> [np.ndarray
         # plot_Y_histogram(Y)
         return X, Y, True
 
-    elif dataset_name == "heart_disease":
-        sys.path.insert(0, '/home/constantin/Github/FLamby')
-        import flamby
-        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
-        import datasets
-        from datasets.fed_heart_disease.dataset import FedHeartDisease
-        X, Y = [], []
-        for i in range(NB_CLIENTS[dataset_name]):
-            train_dataset = FedHeartDisease(train=True, pooled=False, center=i)
-            data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
-            if features_learner:
-                data = features_representation(data, dataset_name).detach()
-            X.append(data.numpy())
-            Y.append(np.concatenate(labels.numpy()))
-        return X, Y, True
-
     raise ValueError("{0}: the dataset is unknown.".format(dataset_name))
 
 
@@ -235,6 +235,7 @@ def load_data(data: np.array, labels: np.array, splitted: bool, dataset_name: st
               labels_type: str, iid: bool = False) -> ClientsNetwork:
 
     print("Regenerating clients.")
+    start = time.time()
 
     if splitted:
         nb_labels = len(np.unique(np.concatenate(labels)))
@@ -249,6 +250,8 @@ def load_data(data: np.array, labels: np.array, splitted: bool, dataset_name: st
         central_client = Client("central", data, labels, nb_labels, PCA_size, labels_type)
 
     clients_network = ClientsNetwork(dataset_name, clients, central_client, labels_type, iid)
+
+    print(f"Elapsed time: {time.time() - start}s")
 
     return clients_network
 
