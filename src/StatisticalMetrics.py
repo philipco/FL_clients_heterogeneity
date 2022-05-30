@@ -36,7 +36,7 @@ class StatisticalMetrics:
         self.nb_clients = nb_clients
         self.nb_labels = nb_labels
         self.labels_type = labels_type
-        self.metrics_folder = "pictures/" + self.dataset_name + "/metrics"
+        self.metrics_folder = "pictures/" + self.dataset_name
 
         ############## Metrics on X ##############
         self.EM_distance_on_X = DistanceForSeveralRuns()
@@ -56,7 +56,7 @@ class StatisticalMetrics:
             self.EM_distance_on_Y_given_X = [DistanceForSeveralRuns() for i in range(NB_CLUSTER_ON_CONTINUOUS_VAR)]
 
         ############## Metrics on X | Y ##############
-        self.EM_distance_on_X_given_Y = [DistanceForSeveralRuns()  for i in range(self.nb_labels)]
+        # self.EM_distance_on_X_given_Y = [DistanceForSeveralRuns()  for i in range(self.nb_labels)]
 
         create_folder_if_not_existing(self.metrics_folder)
 
@@ -149,7 +149,7 @@ class StatisticalMetrics:
         plt.savefig('{0}/{1}_grouped_hist.png'.format(self.metrics_folder, plot_name), dvi=1000, bbox_inches='tight')
 
     def plot_distance(self, distance: DistanceForSeveralRuns, suptitle: str, plot_name: str, scale: bool,
-                      reorder: bool) -> None:
+                      reorder: bool = True) -> None:
 
         if distance.is_empty(): return
 
@@ -178,7 +178,7 @@ class StatisticalMetrics:
 
         # We clusterize the distance matrix to plot a block-matrix.
         if reorder:
-            distance_threshold = 1 if scale else 0.2
+            distance_threshold = 0.1 if scale else 0.2
             matrix_to_plot, clients_order = reorder_clients(matrix_to_plot, distance_threshold)
         else:
             clients_order = np.arange(self.nb_clients)
@@ -252,7 +252,7 @@ class StatisticalMetrics:
         fig.colorbar(im1, ax=axes[1], cax=cax)
 
         # axes[1].get_yaxis().set_visible(False)
-        plt.suptitle("{0} for {1}".format(suptitle, self.metrics_folder.split("/")[-2]), fontsize='xx-large',
+        plt.suptitle("{0} for {1}".format(suptitle, self.metrics_folder.split("/")[-1]), fontsize='xx-large',
                      weight='extra bold')
         plt.savefig('{0}/{1}.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
         np.savetxt('{0}/{1}-iid.txt'.format(self.metrics_folder, plot_name), matrix_to_plot[0], delimiter=',')
