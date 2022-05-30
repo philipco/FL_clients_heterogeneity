@@ -91,6 +91,30 @@ def features_representation(data, dataset_name):
     return model(data)
 
 
+def get_data_labels(fed_dataset, features_learner, dataset_name, train, kwargs, kwargs_loader):
+
+    train_dataset = fed_dataset(train=train, **kwargs)
+    data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset), **kwargs_loader)))
+    if len(data.shape) > 2:
+        data = torch.flatten(data, start_dim=1)
+    if features_learner:
+        data = features_representation(data, dataset_name).detach()
+    # print("Shape features:", data.shape)
+    # print("Shape features:", labels.shape)
+
+    return data, labels
+
+
+def get_train_test_data(fed_dataset, features_learner, dataset_name, kwargs, kwargs_loader={}):
+    data_train, labels_train = get_data_labels(fed_dataset, features_learner, dataset_name, True, kwargs,
+                                               kwargs_loader)
+    data_test, labels_test = get_data_labels(fed_dataset, features_learner, dataset_name, False, kwargs,
+                                             kwargs_loader)
+    data = torch.cat([data_train, data_test])
+    labels = torch.cat([labels_train, labels_test])
+    return data, labels
+
+
 def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarray, np.ndarray]:
 
     transform = torchvision.transforms.Compose([
@@ -103,24 +127,18 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
 
     if dataset_name == "mnist":
         from torchvision import datasets
-        mnist_dataset = datasets.MNIST(root='../DATASETS/MNIST', train=True, download=True, transform=transform)
-        dataloader = DataLoader(mnist_dataset, batch_size=len(mnist_dataset), shuffle=False)
-        mnist_data, mnist_labels = next(iter(dataloader))
-        if features_learner:
-            mnist_data = features_representation(mnist_data, dataset_name).detach().numpy()
-        mnist_labels = mnist_labels.numpy()
-        return mnist_data, mnist_labels, False
+        kwargs = dict(root='../DATASETS/MNIST', download=False, transform=transform)
+        kwargs_loader = dict(shuffle=False)
+        data, labels = get_train_test_data(datasets.MNIST, features_learner, dataset_name, kwargs, kwargs_loader)
+        return data.numpy(), labels.numpy(), False
 
     elif dataset_name == "fashion_mnist":
         from torchvision import datasets
-        mnist_dataset = datasets.FashionMNIST(root='../../DATASETS/FASHION_MNIST', train=True, download=True,
-                                              transform=None)
-        dataloader = DataLoader(mnist_dataset, batch_size=len(mnist_dataset), shuffle=False)
-        mnist_data, mnist_labels = next(iter(dataloader))
-        if features_learner:
-            mnist_data = features_representation(mnist_data, dataset_name).detach().numpy()
-        mnist_labels = mnist_labels.numpy()
-        return mnist_data, mnist_labels, False
+        from torchvision import datasets
+        kwargs = dict(root='../DATASETS/FASHION_MNIST', download=False, transform=transform)
+        kwargs_loader = dict(shuffle=False)
+        data, labels = get_train_test_data(datasets.FashionMNIST, features_learner, dataset_name, kwargs, kwargs_loader)
+        return data.numpy(), labels.numpy(), False
 
     elif dataset_name == "camelyon16":
         sys.path.insert(0, '/home/constantin/Github/FLamby')
@@ -131,13 +149,11 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
         X, Y = [], []
         nb_of_client = 1 if DEBUG else NB_CLIENTS[dataset_name]
         for i in range(nb_of_client):
-            train_dataset = FedCamelyon16(train=True, pooled=False, center=i, debug=DEBUG)
-            training_dataloader = DataLoader(train_dataset, batch_size=len(train_dataset), collate_fn=collate_fn)
-            for s, (data, labels) in enumerate(training_dataloader):
-                if features_learner:
-                    data = features_representation(data, dataset_name).detach()
-                X.append(data.reshape(data.shape[0], data.shape[1] * data.shape[2]).numpy())
-                Y.append(np.concatenate(labels.numpy()))
+            kwargs = dict(center=i, pooled=False, debug=DEBUG)
+            kwargs_loader = dict(collate_fn=collate_fn)
+            data, labels = get_train_test_data(FedCamelyon16, features_learner, dataset_name, kwargs, kwargs_loader)
+            X.append(data.numpy())
+            Y.append(labels.numpy())
         # In debug mode, there is only 5 pictures from the first center.
         if DEBUG:
             X, Y = [X[0][:2], X[0][2:]], [Y[0][:2], Y[0][2:]]
@@ -151,10 +167,8 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
         from datasets.fed_heart_disease.dataset import FedHeartDisease
         X, Y = [], []
         for i in range(NB_CLIENTS[dataset_name]):
-            train_dataset = FedHeartDisease(train=True, pooled=False, center=i)
-            data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
-            if features_learner:
-                data = features_representation(data, dataset_name).detach()
+            kwargs = dict(center=i, pooled=False)
+            data, labels = get_train_test_data(FedHeartDisease, features_learner, dataset_name, kwargs)
             X.append(data.numpy())
             Y.append(np.concatenate(labels.numpy()))
         return X, Y, True
@@ -166,7 +180,6 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
         import datasets
         from datasets.fed_isic2019.dataset import FedIsic2019
         X, Y = [], []
-        nb_of_client = 1 if DEBUG else NB_CLIENTS[dataset_name]
         sz = 200
         train_aug = albumentations.Compose(
             [
@@ -175,12 +188,9 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
             ]
         )
         for i in range(NB_CLIENTS[dataset_name]):
-            print(i)
-            train_dataset = FedIsic2019(train=True, pooled=False, center=i, augmentations=train_aug)
-            data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
-            if features_learner:
-                data = features_representation(data, dataset_name).detach()
-            X.append(data.reshape(data.shape[0], data.shape[1] * data.shape[2] * data.shape[3]).numpy())
+            kwargs = dict(center=i, pooled=False)#, augmentations=train_aug)
+            data, labels = get_train_test_data(FedIsic2019, features_learner, dataset_name, kwargs)
+            X.append(data.numpy())
             Y.append(labels.numpy())
         return X, Y, True
 
@@ -192,11 +202,8 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
         from datasets.fed_ixi.dataset import FedIXITiny
         X, Y = [], []
         for i in range(NB_CLIENTS[dataset_name]):
-            train_dataset = FedIXITiny(train=True, pooled=False, center=i)
-            data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
-            data = data.reshape(data.shape[0], data.shape[1] * data.shape[2] * data.shape[3] * data.shape[4])
-            if features_learner:
-                data = features_representation(data, dataset_name).detach()
+            kwargs = dict(center=i, pooled=False)
+            data, labels = get_train_test_data(FedIXITiny, features_learner, dataset_name, kwargs)
             X.append(data.numpy())
             Y.append(np.concatenate(labels.numpy()))
         return X, Y, True
@@ -215,10 +222,8 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
         from datasets.fed_tcga_brca.dataset import FedTcgaBrca
         X, Y = [], []
         for i in range(NB_CLIENTS[dataset_name]):
-            train_dataset = FedTcgaBrca(train=True, pooled=False, center=i)
-            data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset))))
-            if features_learner:
-                data = features_representation(data, dataset_name).detach()
+            kwargs = dict(center=i, pooled=False)
+            data, labels = get_train_test_data(FedTcgaBrca, features_learner, dataset_name, kwargs)
             X.append(data.numpy())
             Y.append(labels.numpy()[:,1].reshape(-1, 1))
         # plot_distrib(Y, 0, 1)
@@ -251,7 +256,7 @@ def load_data(data: np.array, labels: np.array, splitted: bool, dataset_name: st
 
     clients_network = ClientsNetwork(dataset_name, clients, central_client, labels_type, iid)
 
-    print(f"Elapsed time: {time.time() - start}s")
+    print("Elapsed time: {:.2f}s".format(time.time() - start))
 
     return clients_network
 

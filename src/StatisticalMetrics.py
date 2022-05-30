@@ -252,7 +252,7 @@ class StatisticalMetrics:
         fig.colorbar(im1, ax=axes[1], cax=cax)
 
         # axes[1].get_yaxis().set_visible(False)
-        plt.suptitle("{0} for {1}".format(suptitle, self.metrics_folder.split("/")[-2]), fontsize='xx-large',
+        plt.suptitle("{0} for {1}".format(suptitle, self.metrics_folder.split("/")[-1]), fontsize='xx-large',
                      weight='extra bold')
         plt.savefig('{0}/{1}.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
         np.savetxt('{0}/{1}-iid.txt'.format(self.metrics_folder, plot_name), matrix_to_plot[0], delimiter=',')

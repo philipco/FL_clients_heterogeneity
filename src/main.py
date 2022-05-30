@@ -21,12 +21,19 @@ if __name__ == '__main__':
 
     data, labels, splitted = get_dataset(DATASET_NAME)
 
+    # If the dataset has a naturel split, we need to load it only once.
+    if splitted:
+        non_iid_clients_network = load_data(data, labels, splitted, DATASET_NAME, NB_CLIENTS[DATASET_NAME],
+                                            LABELS_TYPE[DATASET_NAME], iid=False)
+
     for i in range(NB_RUNS):
         print_mem_usage("RUN {0}/{1}".format(i+1, NB_RUNS))
 
         ########## Regenerating data ##########
-        non_iid_clients_network = load_data(data, labels, splitted, DATASET_NAME, NB_CLIENTS[DATASET_NAME],
-                                            LABELS_TYPE[DATASET_NAME], iid=False)
+        # If the dataset has not a naturel split, we need to reload it at every run in order to randomly build clients.
+        if not splitted:
+            non_iid_clients_network = load_data(data, labels, splitted, DATASET_NAME, NB_CLIENTS[DATASET_NAME],
+                                                LABELS_TYPE[DATASET_NAME], iid=False)
         iid_clients_network = load_data(data, labels, splitted, DATASET_NAME, NB_CLIENTS[DATASET_NAME],
                                         LABELS_TYPE[DATASET_NAME], iid=True)
 
