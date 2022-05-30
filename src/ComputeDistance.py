@@ -4,6 +4,7 @@ from typing import List
 
 import numpy as np
 import ot
+import torch
 from tqdm import tqdm
 
 from src.Client import ClientsNetwork, NB_CLUSTER_ON_CONTINUOUS_VAR
@@ -40,12 +41,18 @@ def compute_EM_distance(distrib1: np.ndarray, distrib2: np.ndarray, stochastic: 
     batch_size1, batch_size2 = nb_sample1 // nb_iteration, nb_sample2 // nb_iteration
     minibatch_emd = []
 
+    # TODO-WARNING : OT doesn't work using pytorch.
+    distrib1 = distrib1.numpy()
+    distrib2 = distrib2.numpy()
+
     for k in range(nb_iteration):
         sub_distrib1 = sub_sample(distrib1, batch_size1)
         sub_distrib2 = sub_sample(distrib2, batch_size2)
 
         cost_matrix = ot.dist(sub_distrib1, sub_distrib2)
         a, b = ot.unif(len(sub_distrib1)), ot.unif(len(sub_distrib2))  # uniform distribution on samples
+        # a = torch.ones(len(sub_distrib1)) / len(sub_distrib1)
+        # b = torch.ones(len(sub_distrib2)) / len(sub_distrib2)
         minibatch_emd.append(ot.emd2(a, b, cost_matrix))  # Wasserstein distance / EMD value
     return np.average(minibatch_emd)
 

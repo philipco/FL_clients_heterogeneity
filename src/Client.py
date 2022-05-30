@@ -2,19 +2,19 @@
 import warnings
 
 import numpy as np
+import torch
 from matplotlib import pyplot as plt
-from sklearn import preprocessing
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import scale, StandardScaler
 import seaborn as sns
 from typing import List
 
 from statsmodels.distributions import ECDF
 
-from src.PickleHandler import pickle_saver, pickle_loader
+from src.PickleHandler import pickle_saver
+from src.PytorchScaler import StandardScaler
 from src.Utilities import create_folder_if_not_existing
 
 NB_CLUSTER_ON_CONTINUOUS_VAR = 3
@@ -35,7 +35,8 @@ def scatter_plot(data: np.ndarray, labels: np.ndarray, idx: int, tsne_folder: st
 
 class Client:
 
-    def __init__(self, idx: int, X: np.ndarray, Y: np.ndarray, nb_labels: int, PCA_size: int, labels_type: str) -> None:
+    def __init__(self, idx: int, X: torch.FloatTensor, Y: torch.FloatTensor, nb_labels: int, PCA_size: int,
+                 labels_type: str) -> None:
         super().__init__()
         self.idx = idx
         self.X = X
@@ -43,13 +44,14 @@ class Client:
 
         # If there is less than 20 elements, or less that 20 dimensions.
         # There is less than 20 elements for Camelyon in debug mode.
-        if self.X.shape[1] <= 20 or self.X.shape[0] <= 20:
-            scaler = preprocessing.StandardScaler().fit(self.X)
-            self.X_lower_dim = scaler.transform(self.X)
-        else:
-            self.PCA_size = PCA_size
-            self.X_PCA = self.compute_PCA(self.X)
-            self.X_lower_dim = self.compute_PCA(self.X)
+        # if self.X.shape[1] <= 20 or self.X.shape[0] <= 20:
+        #     # scaler = preprocessing.StandardScaler().fit(self.X)
+        #     self.X_lower_dim = standard_scaler(self.X)
+        # else:
+        #     self.PCA_size = PCA_size
+        scaler = StandardScaler()
+        scaler.fit(self.X)
+        self.X_lower_dim = scaler.transform(self.X)
         self.Y = Y
         self.nb_labels = nb_labels
 
@@ -73,9 +75,9 @@ class Client:
         pca.fit(X)
         return pca.transform(X)
 
-    def compute_Y_distribution(self, labels_type: str) -> np.ndarray:
+    def compute_Y_distribution(self, labels_type: str) -> torch.FloatTensor:
         if labels_type == "discrete":
-            return np.array([(self.Y == y).sum() / len(self.Y) for y in range(self.nb_labels)])
+            return torch.FloatTensor([(self.Y == y).sum() / len(self.Y) for y in range(self.nb_labels)])
         elif labels_type == "continuous":
             return self.Y
         else:
@@ -104,7 +106,7 @@ class Client:
         if labels_type == "discrete":
             for x in range(NB_CLUSTER_ON_CONTINUOUS_VAR):
                 self.Y_given_X_distribution.append(
-                    np.array([(self.Y[self.X_clusters == x] == y).sum() / len(self.Y[self.X_clusters == x])
+                    torch.FloatTensor([(self.Y[self.X_clusters == x] == y).sum() / len(self.Y[self.X_clusters == x])
                               for y in range(self.nb_labels)]))
         elif labels_type == "continuous":
             for x in range(NB_CLUSTER_ON_CONTINUOUS_VAR):
@@ -146,11 +148,11 @@ class ClientsNetwork:
     def print_Y_empirical_distribution_function(self):
         fig, ax1 = plt.subplots(figsize=(12,8))
         ax2 = ax1.twinx()
-        bins = np.histogram(np.hstack((np.concatenate(self.clients[idx].Y) for idx in range(len(self.clients)))),
+        bins = np.histogram(np.hstack((self.clients[idx].Y.view(-1) for idx in range(len(self.clients)))),
                             bins=40)[1]
         for idx in range(len(self.clients)):
             # fit a cdf
-            distrib_Y = np.concatenate(self.clients[idx].Y)
+            distrib_Y = self.clients[idx].Y.view(-1).numpy()
             ecdf = ECDF(distrib_Y)
             ax1.plot(ecdf.x, ecdf.y, label=idx)
             ax2.hist(distrib_Y, bins=bins, density=False, histtype='step', stacked=True, fill=False, lw=2, label=idx)
