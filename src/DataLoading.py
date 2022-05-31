@@ -16,7 +16,7 @@ from src.Constants import NB_CLIENTS, DEBUG
 from src.FeaturesLearner import ReshapeTransform
 
 DIRICHLET_COEF = 0.5
-PCA_NB_COMPONENTS = 10
+PCA_NB_COMPONENTS = 16
 
 
 def iid_split(data: torch.FloatTensor, labels: torch.FloatTensor, nb_clients: int,
@@ -180,15 +180,8 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [torch.Flo
         import datasets
         from datasets.fed_isic2019.dataset import FedIsic2019
         X, Y = [], []
-        sz = 200
-        train_aug = albumentations.Compose(
-            [
-                albumentations.RandomCrop(sz, sz),
-                albumentations.Normalize(always_apply=True),
-            ]
-        )
         for i in range(NB_CLIENTS[dataset_name]):
-            kwargs = dict(center=i, pooled=False)#, augmentations=train_aug)
+            kwargs = dict(center=i, pooled=False)
             data, labels = get_train_test_data(FedIsic2019, features_learner, dataset_name, kwargs)
             X.append(data)
             Y.append(labels)
@@ -204,6 +197,34 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [torch.Flo
         for i in range(NB_CLIENTS[dataset_name]):
             kwargs = dict(center=i, pooled=False)
             data, labels = get_train_test_data(FedIXITiny, features_learner, dataset_name, kwargs)
+            X.append(data)
+            Y.append(labels)
+        return X, Y, True
+
+    elif dataset_name == "kits19":
+        sys.path.insert(0, '/home/constantin/Github/FLamby')
+        import flamby
+        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
+        import datasets
+        from datasets.fed_kits19.dataset import FedKits19
+        X, Y = [], []
+        for i in range(NB_CLIENTS[dataset_name]):
+            kwargs = dict(center=i, pooled=False)
+            data, labels = get_train_test_data(FedKits19, features_learner, dataset_name, kwargs)
+            X.append(data)
+            Y.append(labels)
+        return X, Y, True
+
+    elif dataset_name == "lidc_idri":
+        sys.path.insert(0, '/home/constantin/Github/FLamby')
+        import flamby
+        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
+        import datasets
+        from datasets.fed_lidc_idri.dataset import FedLidcIdri
+        X, Y = [], []
+        for i in range(NB_CLIENTS[dataset_name]):
+            kwargs = dict(center=i, pooled=False)
+            data, labels = get_train_test_data(FedLidcIdri, features_learner, dataset_name, kwargs)
             X.append(data)
             Y.append(labels)
         return X, Y, True
