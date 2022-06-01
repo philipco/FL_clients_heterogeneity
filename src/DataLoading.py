@@ -68,6 +68,7 @@ def create_clients(nb_clients: int, data: torch.FloatTensor, labels: torch.Float
     if split:
         nb_points_by_non_iid_clients = np.array([x.shape[0] for x in data])
     else:
+        data, labels = data[0], labels[0]
         nb_points_by_non_iid_clients = np.array([len(labels) // nb_clients for i in range(nb_clients)])
     # It the dataset is already split and we don't want to create an iid dataset.
     if split and not iid:
@@ -299,7 +300,7 @@ def load_data(data: torch.FloatTensor, labels: torch.FloatTensor, splitted: bool
     if splitted:
         nb_labels = len(torch.unique(torch.cat(labels)))
     else:
-        nb_labels = len(torch.unique(labels))
+        nb_labels = len(torch.unique(labels[0]))
 
     clients, PCA_size = create_clients(nb_clients, data, labels, nb_labels, splitted, dataset_name, iid=iid)
     # if splitted:

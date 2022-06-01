@@ -20,8 +20,10 @@ if __name__ == '__main__':
                                     OUTPUT_TYPE[DATASET_NAME])
 
     data, labels, splitted = get_dataset(DATASET_NAME)
-
-    data, labels = normalize_data(data, labels, DATASET_NAME)
+    if splitted:
+        data, labels = normalize_data(data, labels, DATASET_NAME)
+    else:
+        data, labels = normalize_data([data], [labels], DATASET_NAME)
 
     # If the dataset has a naturel split, we need to load it only once.
     if splitted:
