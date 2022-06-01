@@ -1,4 +1,6 @@
 """Created by Constantin Philippenko, 5th April 2022."""
+import argparse
+
 import matplotlib.pyplot as plt
 
 from src.ComputeDistance import *
@@ -8,7 +10,7 @@ from src.StatisticalMetrics import StatisticalMetrics
 from src.Utilities import print_mem_usage
 
 
-DATASET_NAME = "tcga_brca" # kits19  # tcga_brca # ixi # heart_disease
+# DATASET_NAME = "tcga_brca" # kits19  # tcga_brca # ixi # heart_disease
 
 
 NB_RUNS = 20
@@ -16,19 +18,29 @@ NB_RUNS = 20
 
 if __name__ == '__main__':
 
-    my_metrics = StatisticalMetrics(DATASET_NAME, NB_CLIENTS[DATASET_NAME], NB_LABELS[DATASET_NAME],
-                                    OUTPUT_TYPE[DATASET_NAME])
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        help="The dataset name.",
+        required=True,
+    )
+    args = parser.parse_args()
+    dataset_name = args.dataset
 
-    data, labels, splitted = get_dataset(DATASET_NAME)
+    my_metrics = StatisticalMetrics(dataset_name, NB_CLIENTS[dataset_name], NB_LABELS[dataset_name],
+                                    OUTPUT_TYPE[dataset_name])
+
+    data, labels, splitted = get_dataset(dataset_name)
     if splitted:
-        data, labels = normalize_data(data, labels, DATASET_NAME)
+        data, labels = normalize_data(data, labels, dataset_name)
     else:
-        data, labels = normalize_data([data], [labels], DATASET_NAME)
+        data, labels = normalize_data([data], [labels], dataset_name)
 
     # If the dataset has a naturel split, we need to load it only once.
     if splitted:
-        non_iid_clients_network = load_data(data, labels, splitted, DATASET_NAME, NB_CLIENTS[DATASET_NAME],
-                                            OUTPUT_TYPE[DATASET_NAME], iid=False)
+        non_iid_clients_network = load_data(data, labels, splitted, dataset_name, NB_CLIENTS[dataset_name],
+                                            OUTPUT_TYPE[dataset_name], iid=False)
 
     for i in range(NB_RUNS):
         print_mem_usage("RUN {0}/{1}".format(i+1, NB_RUNS))
@@ -36,17 +48,17 @@ if __name__ == '__main__':
         ########## Regenerating data ##########
         # If the dataset has not a naturel split, we need to reload it at every run in order to randomly build clients.
         if not splitted:
-            non_iid_clients_network = load_data(data, labels, splitted, DATASET_NAME, NB_CLIENTS[DATASET_NAME],
-                                                OUTPUT_TYPE[DATASET_NAME], iid=False)
-        iid_clients_network = load_data(data, labels, splitted, DATASET_NAME, NB_CLIENTS[DATASET_NAME],
-                                        OUTPUT_TYPE[DATASET_NAME], iid=True)
+            non_iid_clients_network = load_data(data, labels, splitted, dataset_name, NB_CLIENTS[dataset_name],
+                                                OUTPUT_TYPE[dataset_name], iid=False)
+        iid_clients_network = load_data(data, labels, splitted, dataset_name, NB_CLIENTS[dataset_name],
+                                        OUTPUT_TYPE[dataset_name], iid=True)
 
         # ########## Compute metrics on X ##########
         EM_distance_on_X = compute_metrics_on_X(iid_clients_network, non_iid_clients_network)
         my_metrics.set_metrics_on_X(EM_distance_on_X)
 
         ########## Compute metrics on Y ##########
-        metrics_on_Y = compute_metrics_on_Y(iid_clients_network, non_iid_clients_network, OUTPUT_TYPE[DATASET_NAME])
+        metrics_on_Y = compute_metrics_on_Y(iid_clients_network, non_iid_clients_network, OUTPUT_TYPE[dataset_name])
         my_metrics.set_metrics_on_Y(metrics_on_Y)
 
         # ########## Compute metrics on Y | X ##########
@@ -58,7 +70,7 @@ if __name__ == '__main__':
         # EM_distance_on_X_given_Y = compute_metrics_on_X_given_Y(iid_clients_network, non_iid_clients_network)
         # my_metrics.set_metrics_on_X_given_Y(EM_distance_on_X_given_Y)
 
-    if OUTPUT_TYPE[DATASET_NAME] == "continuous":
+    if OUTPUT_TYPE[dataset_name] == "continuous":
         non_iid_clients_network.print_Y_empirical_distribution_function()
 
     my_metrics.set_nb_points_by_non_iid_clients(np.array([len(c.Y) for c in non_iid_clients_network.clients]))

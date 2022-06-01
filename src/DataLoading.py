@@ -16,6 +16,13 @@ from src.Constants import NB_CLIENTS, DEBUG, INPUT_TYPE, OUTPUT_TYPE
 from src.FeaturesLearner import ReshapeTransform
 from src.PytorchScaler import StandardScaler
 
+FLAMBY_PATH = '../FLamby'
+
+sys.path.insert(0, FLAMBY_PATH)
+import flamby
+sys.path.insert(0, FLAMBY_PATH + '/flamby')
+import datasets
+
 DIRICHLET_COEF = 0.5
 PCA_NB_COMPONENTS = 16
 
@@ -155,10 +162,6 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [torch.Flo
         return data, labels, False
 
     elif dataset_name == "camelyon16":
-        sys.path.insert(0, '/home/constantin/Github/FLamby')
-        import flamby
-        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
-        import datasets
         from datasets.fed_camelyon16.dataset import FedCamelyon16, collate_fn
         X, Y = [], []
         nb_of_client = 1 if DEBUG else NB_CLIENTS[dataset_name]
@@ -174,9 +177,6 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [torch.Flo
         return X, Y, True
 
     elif dataset_name == "heart_disease":
-        sys.path.insert(0, '/home/constantin/Github/FLamby')
-        import flamby
-        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
         import datasets
         from datasets.fed_heart_disease.dataset import FedHeartDisease
         X, Y = [], []
@@ -188,10 +188,7 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [torch.Flo
         return X, Y, True
 
     elif dataset_name == "isic2019":
-        sys.path.insert(0, '/home/constantin/Github/FLamby')
-        import flamby
-        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
-        import datasets
+
         from datasets.fed_isic2019.dataset import FedIsic2019
         X, Y = [], []
         for i in range(NB_CLIENTS[dataset_name]):
@@ -202,10 +199,6 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [torch.Flo
         return X, Y, True
 
     elif dataset_name == "ixi":
-        sys.path.insert(0, '/home/constantin/Github/FLamby')
-        import flamby
-        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
-        import datasets
         from datasets.fed_ixi.dataset import FedIXITiny
         X, Y = [], []
         for i in range(NB_CLIENTS[dataset_name]):
@@ -216,10 +209,6 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [torch.Flo
         return X, Y, True
 
     elif dataset_name == "kits19":
-        sys.path.insert(0, '/home/constantin/Github/FLamby')
-        import flamby
-        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
-        import datasets
         from datasets.fed_kits19.dataset import FedKits19
         X, Y = [], []
         for i in range(NB_CLIENTS[dataset_name]):
@@ -230,10 +219,6 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [torch.Flo
         return X, Y, True
 
     elif dataset_name == "lidc_idri":
-        sys.path.insert(0, '/home/constantin/Github/FLamby')
-        import flamby
-        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
-        import datasets
         from datasets.fed_lidc_idri.dataset import FedLidcIdri
         X, Y = [], []
         for i in range(NB_CLIENTS[dataset_name]):
@@ -244,16 +229,6 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [torch.Flo
         return X, Y, True
 
     elif dataset_name == "tcga_brca":
-        sys.path.insert(0, '/home/constantin/Github/FLamby')
-        import flamby
-        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
-        import datasets
-        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby/datasets/fed_tcga_brca')
-        import dataset
-        # Required to import correctly lifelines
-        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby/datasets/')
-        import lifelines
-        import fed_tcga_brca
         from datasets.fed_tcga_brca.dataset import FedTcgaBrca
         X, Y = [], []
         for i in range(NB_CLIENTS[dataset_name]):
