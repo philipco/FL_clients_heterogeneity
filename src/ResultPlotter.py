@@ -40,7 +40,7 @@ def plot_metrics(X_max, X_mean, Y_max, Y_mean, datasets_name):
 
 if __name__ == '__main__':
 
-    dataset_names = ["heart_disease", "ixi", "tcga_brca"]
+    dataset_names = ["heart_disease", "isic2019", "ixi", "tcga_brca"]
 
     X_max, X_mean = [], []
     Y_max, Y_mean = [], []
