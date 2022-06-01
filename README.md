@@ -34,7 +34,18 @@ Main classes:
 
 ``conda create -c conda-forge --name FL_heter_env --file requirements.txt python=3.7``
 
+## Usage
 
+Run `python3 -m src.main --dataset dataset_name`.
+
+Presently, the following dataset are accepted: 
+1. camelyon16
+2. lidc_idri
+3. isic2019
+4. tcga_brca
+5. heart_disease
+6. ixi
+7. kits2019
 
 ## Contribution
 
