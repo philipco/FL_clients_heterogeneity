@@ -19,3 +19,6 @@ statmodels
 albumentations
 efficientnet_pytorch
 lifelines
+numai
+nnunet
+statmodels
