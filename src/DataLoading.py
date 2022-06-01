@@ -4,16 +4,17 @@ import sys
 import time
 from typing import List
 
-import albumentations
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torchvision
+from sklearn.decomposition import PCA
 from torch.utils.data import DataLoader
 
 from src.Client import Client, ClientsNetwork
-from src.Constants import NB_CLIENTS, DEBUG
+from src.Constants import NB_CLIENTS, DEBUG, INPUT_TYPE, OUTPUT_TYPE
 from src.FeaturesLearner import ReshapeTransform
+from src.PytorchScaler import StandardScaler
 
 DIRICHLET_COEF = 0.5
 PCA_NB_COMPONENTS = 16
@@ -62,7 +63,7 @@ def dirichlet_split(data: torch.FloatTensor, labels: torch.FloatTensor, nb_clien
 
 
 def create_clients(nb_clients: int, data: torch.FloatTensor, labels: torch.FloatTensor, nb_labels: int, split: bool,
-                   labels_type: str, iid: bool = False) -> List[Client]:
+                   dataset_name: str, iid: bool = False) -> List[Client]:
     clients = []
     if split:
         nb_points_by_non_iid_clients = np.array([x.shape[0] for x in data])
@@ -82,7 +83,7 @@ def create_clients(nb_clients: int, data: torch.FloatTensor, labels: torch.Float
     # assert [len(np.unique(y)) for y in Y] == [nb_labels for y in Y], "Some labels are not represented on some clients."
     PCA_size = min(PCA_NB_COMPONENTS, min([len(x) for x in X]))
     for i in range(nb_clients):
-        clients.append(Client(i, X[i], Y[i], nb_labels, PCA_size, labels_type))
+        clients.append(Client(i, X[i], Y[i], nb_labels, dataset_name))
     return clients, PCA_size
 
 
@@ -97,12 +98,24 @@ def get_data_labels(fed_dataset, features_learner, dataset_name, train, kwargs, 
     data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset), **kwargs_loader)))
     if len(data.shape) > 2:
         data = torch.flatten(data, start_dim=1)
+    if len(labels.shape) > 2:
+        labels = torch.flatten(labels, start_dim=1)
     if features_learner:
         data = features_representation(data, dataset_name).detach()
-    # print("Shape features:", data.shape)
-    # print("Shape features:", labels.shape)
 
     return data, labels
+
+
+def compute_PCA_scikit(X: np.ndarray, PCA_size) -> np.ndarray:
+    # n_components must be between 0 and min(n_samples, n_features).
+    pca = PCA(n_components=PCA_size, svd_solver = 'randomized')
+    pca.fit(X)
+    return pca.transform(X)
+
+
+def compute_PCA(X: List[torch.FloatTensor], PCA_size):
+    U, S, V = torch.pca_lowrank(torch.cat(X), q=PCA_size, niter=50)
+    return [x @ V[:, :PCA_size] for x in X]
 
 
 def get_train_test_data(fed_dataset, features_learner, dataset_name, kwargs, kwargs_loader={}):
@@ -257,10 +270,30 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [torch.Flo
     raise ValueError("{0}: the dataset is unknown.".format(dataset_name))
 
 
+def normalize_data(data: List[torch.FloatTensor], labels: List[torch.FloatTensor], dataset_name: str):
+
+    # We normalize only if the data are tabular
+    if INPUT_TYPE[dataset_name] == "tabular":
+        scaler = StandardScaler()
+        scaler.fit(torch.cat(data))
+        data = [scaler.transform(x) for x in data]
+
+    # TODO : for pictures, we should use an autoencoders to reduce dimension
+    if not (data[0].shape[1] <= 20 or data[0].shape[0] <= 20):
+        data = compute_PCA(data, PCA_NB_COMPONENTS)
+
+    if OUTPUT_TYPE[dataset_name] == "image" and not (labels[0].shape[1] <= 20):
+        labels = compute_PCA(labels, PCA_NB_COMPONENTS)
+
+    return data, labels
+
+
 def load_data(data: torch.FloatTensor, labels: torch.FloatTensor, splitted: bool, dataset_name: str, nb_clients: int,
               labels_type: str, iid: bool = False) -> ClientsNetwork:
 
     print("Regenerating clients.")
+    print("Data shape:", data[0].shape[1:])
+    print("Labels shape:", labels[0].shape[1:])
     start = time.time()
 
     if splitted:
@@ -268,14 +301,14 @@ def load_data(data: torch.FloatTensor, labels: torch.FloatTensor, splitted: bool
     else:
         nb_labels = len(torch.unique(labels))
 
-    clients, PCA_size = create_clients(nb_clients, data, labels, nb_labels, splitted, labels_type, iid=iid)
-    if splitted:
-        central_client = Client("central", torch.cat(data), torch.cat(labels), nb_labels, PCA_size,
-                                labels_type)
-    else:
-        central_client = Client("central", data, labels, nb_labels, PCA_size, labels_type)
+    clients, PCA_size = create_clients(nb_clients, data, labels, nb_labels, splitted, dataset_name, iid=iid)
+    # if splitted:
+    #     central_client = Client("central", torch.cat(data), torch.cat(labels), nb_labels, PCA_size,
+    #                             labels_type)
+    # else:
+    #     central_client = Client("central", data, labels, nb_labels, PCA_size, labels_type)
 
-    clients_network = ClientsNetwork(dataset_name, clients, central_client, labels_type, iid)
+    clients_network = ClientsNetwork(dataset_name, clients, None, labels_type, iid)
 
     print("Elapsed time: {:.2f}s".format(time.time() - start))
 

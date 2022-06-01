@@ -36,6 +36,7 @@ def sub_sample(distrib, nb_sample):
 def compute_EM_distance(distrib1: np.ndarray, distrib2: np.ndarray, stochastic: bool) -> float:
     """Earth's mover."""
     assert len(distrib1) >= 1 and len(distrib2) >= 1, "Distributions must not be empty."
+    assert len(distrib1[0]) <= 20, "Dimension is bigger than 20."
     nb_sample1, nb_sample2 = distrib1.shape[0], distrib2.shape[0]
     nb_iteration = 20 if stochastic else 1
     batch_size1, batch_size2 = nb_sample1 // nb_iteration, nb_sample2 // nb_iteration
@@ -91,16 +92,16 @@ def compute_metrics_on_discrete_var(nb_clients: int, centralized_distribution: n
 
     KL_distance_on_Y, TV_distance_on_Y = Distance(nb_clients), Distance(nb_clients)
 
-    for i in range(nb_clients):
-        # Compute KL distance to centralized dataset
-        KL_distance_iid = compute_KL_distance(iid_clients_distributions[i], centralized_distribution)
-        KL_distance_non_iid = compute_KL_distance(non_iid_clients_distributions[i], centralized_distribution)
-        KL_distance_on_Y.set_distance_to_centralized(i, KL_distance_iid, KL_distance_non_iid)
-
-        # Compute TV distance to centralized dataset
-        TV_distance_iid = compute_TV_distance(iid_clients_distributions[i], centralized_distribution)
-        TV_distance_non_iid = compute_TV_distance(non_iid_clients_distributions[i], centralized_distribution)
-        TV_distance_on_Y.set_distance_to_centralized(i, TV_distance_iid, TV_distance_non_iid)
+    # for i in range(nb_clients):
+    #     # Compute KL distance to centralized dataset
+    #     KL_distance_iid = compute_KL_distance(iid_clients_distributions[i], centralized_distribution)
+    #     KL_distance_non_iid = compute_KL_distance(non_iid_clients_distributions[i], centralized_distribution)
+    #     KL_distance_on_Y.set_distance_to_centralized(i, KL_distance_iid, KL_distance_non_iid)
+    #
+    #     # Compute TV distance to centralized dataset
+    #     TV_distance_iid = compute_TV_distance(iid_clients_distributions[i], centralized_distribution)
+    #     TV_distance_non_iid = compute_TV_distance(non_iid_clients_distributions[i], centralized_distribution)
+    #     TV_distance_on_Y.set_distance_to_centralized(i, TV_distance_iid, TV_distance_non_iid)
 
     # Compute TV distance (symmetric matrix) one to one.
     for i in range(nb_clients):
@@ -120,19 +121,19 @@ def compute_metrics_on_discrete_var(nb_clients: int, centralized_distribution: n
     return KL_distance_on_Y, TV_distance_on_Y
 
 
-def compute_metrics_on_Y(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork, labels_type: str) \
-        -> [Distance, Distance]:
+def compute_metrics_on_Y(clients_network_iid: ClientsNetwork, clients_network_non_iid: ClientsNetwork,
+                         output_type: str) -> [Distance, Distance]:
     print("\n=== Compute metrics on Y ===")
 
     nb_clients = len(clients_network_iid.clients)
-    if labels_type == "discrete":
-        KL, TV = compute_metrics_on_discrete_var(nb_clients, clients_network_iid.centralized.Y_distribution,
+    if output_type == "discrete":
+        KL, TV = compute_metrics_on_discrete_var(nb_clients, None, #clients_network_iid.centralized.Y_distribution,
                                                [clients_network_iid.clients[i].Y_distribution for i in range(nb_clients)],
                                                [clients_network_non_iid.clients[i].Y_distribution for i in
                                                 range(nb_clients)])
         return KL, TV
-    elif labels_type == "continuous":
-        return compute_metrics_on_continuous_var(nb_clients, clients_network_iid.centralized.Y_distribution,
+    elif output_type in ["image", "continuous"]:
+        return compute_metrics_on_continuous_var(nb_clients, None, #clients_network_iid.centralized.Y_distribution,
                                             [clients_network_iid.clients[i].Y_distribution for i in range(nb_clients)],
                                             [clients_network_non_iid.clients[i].Y_distribution for i in
                                              range(nb_clients)])
@@ -149,7 +150,7 @@ def compute_metrics_on_Y_given_X(clients_network_iid: ClientsNetwork, clients_ne
         KL_distance_on_Y = []
         TV_distance_on_Y = []
         for x in tqdm(range(NB_CLUSTER_ON_CONTINUOUS_VAR)):
-            KL, TV = compute_metrics_on_discrete_var(nb_clients, clients_network_iid.centralized.Y_distribution,
+            KL, TV = compute_metrics_on_discrete_var(nb_clients, None, #clients_network_iid.centralized.Y_distribution,
                                                    [clients_network_iid.clients[i].Y_given_X_distribution[x] for i in
                                                     range(nb_clients)],
                                                    [clients_network_non_iid.clients[i].Y_given_X_distribution[x] for i in
@@ -176,7 +177,7 @@ def compute_metrics_on_X(clients_network_iid: ClientsNetwork, clients_network_no
     print("\n=== Compute metrics on X ===")
     nb_clients = len(clients_network_iid.clients)
 
-    return compute_metrics_on_continuous_var(nb_clients, clients_network_iid.centralized.X_lower_dim,
+    return compute_metrics_on_continuous_var(nb_clients, None, #clients_network_iid.centralized.X_lower_dim,
                                                    [clients_network_iid.clients[i].X_lower_dim for i in
                                                     range(nb_clients)],
                                                    [clients_network_non_iid.clients[i].X_lower_dim for i in

@@ -45,7 +45,7 @@ class StatisticalMetrics:
         if self.labels_type == "discrete":
             self.KL_distance_on_Y = DistanceForSeveralRuns()
             self.TV_distance_on_Y = DistanceForSeveralRuns()
-        elif self.labels_type == "continuous":
+        elif self.labels_type in ["continuous", "image"]:
             self.EM_distance_on_Y = DistanceForSeveralRuns()
 
         ############## Metrics on Y | X ##############
@@ -69,7 +69,7 @@ class StatisticalMetrics:
             KL_distance_on_Y, TV_distance_on_Y = metrics_on_Y
             self.KL_distance_on_Y.add_distance(KL_distance_on_Y)
             self.TV_distance_on_Y.add_distance(TV_distance_on_Y)
-        elif self.labels_type == "continuous":
+        elif self.labels_type in ["continuous", "image"]:
             self.EM_distance_on_Y.add_distance(metrics_on_Y)
         else:
             raise ValueError("Unrecognized labels type.")
@@ -149,31 +149,27 @@ class StatisticalMetrics:
         plt.savefig('{0}/{1}_grouped_hist.png'.format(self.metrics_folder, plot_name), dvi=1000, bbox_inches='tight')
 
     def plot_distance(self, distance: DistanceForSeveralRuns, suptitle: str, plot_name: str, scale: bool,
-                      reorder: bool = True) -> None:
+                      reorder: bool = False) -> None:
 
         if distance.is_empty(): return
 
-        fig = plt.figure()
-        ax1 = plt.subplot2grid((self.nb_clients + 1, 2), (0, 0), colspan=1, rowspan=self.nb_clients)
-        ax2 = plt.subplot2grid((self.nb_clients + 1, 2), (0, 1), colspan=1, rowspan=self.nb_clients)
-
-        axes = [ax1, ax2]
+        fig, axes = plt.subplots(1, 2)
 
         iid_distance_one_to_one, non_iid_distance_one_to_one = distance.get_avg_distance_one_to_one()
         matrix_to_plot = [iid_distance_one_to_one,
                           non_iid_distance_one_to_one]
 
-        if not (np.diag(matrix_to_plot[0]) < 10e-6).all():
-            print("The diagonal of the iid distance's matrix is not null")
-        if not (np.diag(matrix_to_plot[1]) < 10e-6).all():
-            print("The diagonal of the non-iid distance's matrix is not null")
+        if not (np.diag(matrix_to_plot[0]) < 10e-3).all():
+            print("WARNING: The diagonal of the iid distance's matrix is not null")
+        if not (np.diag(matrix_to_plot[1]) < 10e-3).all():
+            print("WARNING: The diagonal of the non-iid distance's matrix is not null")
 
         if scale:
-            print("Min-Max scaling before plotting ...")
+            print("Standard scaling before plotting ...")
             # matrix_to_plot = scaling(np.array([remove_diagonal(matrix_to_plot[0], symmetric_matrix=False)]).reshape(-1, 1),
             #                          matrix_to_plot, StandardScaler())
-            both = np.concatenate(np.array([remove_diagonal(matrix_to_plot[0], symmetric_matrix=False),
-                       remove_diagonal(matrix_to_plot[1], symmetric_matrix=False)])).reshape(-1, 1)
+            both = np.array(remove_diagonal(matrix_to_plot[0], symmetric_matrix=False)).reshape(-1, 1)
+                       # remove_diagonal(matrix_to_plot[1], symmetric_matrix=False)])).reshape(-1, 1)
             matrix_to_plot = scaling(both, matrix_to_plot, StandardScaler())
 
         # We clusterize the distance matrix to plot a block-matrix.
@@ -237,8 +233,7 @@ class StatisticalMetrics:
         axes[0].set_title(label=TITLES[0])
         axes[1].set_title(label=TITLES[1])
 
-        # set the axis limits
-        for ax in axes:
+        for ax in axes[:2]:
             ax.set_ylim(0, self.nb_clients)
             ax.set_xlim(0, self.nb_clients)
             ax.set_yticks(xticks)
@@ -270,7 +265,7 @@ class StatisticalMetrics:
                                 "{0}_KL".format(plot_name))
             self.plot_histogram(self.TV_distance_on_Y, r"TV distance for ${0}$".format(plot_name),
                                 "{0}_TV".format(plot_name), symmetric_matrix = True)
-        elif self.labels_type == "continuous":
+        elif self.labels_type in ["continuous", "image"]:
             self.plot_distance(self.EM_distance_on_Y, r"Wasserstein distance for ${0}$".format(plot_name),
                                "{0}".format(plot_name), scale=True)
             self.plot_histogram(self.EM_distance_on_Y, r"Wasserstein distance for ${0}$".format(plot_name),
@@ -319,11 +314,11 @@ class StatisticalMetrics:
 
 
 def scaling(caliber, matrix_to_plot: List[np.array], scaler):
-    transform = scaler.fit_transform(caliber)
-    m0, m1 = transform[:len(transform) // 2], transform[len(transform) // 2:]
-    # transform = scaler.fit(caliber)
-    # m0 = scaler.transform(remove_diagonal(matrix_to_plot[0], False).reshape(-1, 1))
-    # m1 = scaler.transform(remove_diagonal(matrix_to_plot[1], False).reshape(-1, 1))
+    # transform = scaler.fit_transform(caliber)
+    # m0, m1 = transform[:len(transform) // 2], transform[len(transform) // 2:]
+    scaler.fit(caliber)
+    m0 = scaler.transform(remove_diagonal(matrix_to_plot[0], False).reshape(-1, 1))
+    m1 = scaler.transform(remove_diagonal(matrix_to_plot[1], False).reshape(-1, 1))
 
     matrix_to_plot[0] = create_matrix_with_zeros_diagonal_from_array(m0)
     matrix_to_plot[1] = create_matrix_with_zeros_diagonal_from_array(m1)
