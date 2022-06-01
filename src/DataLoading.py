@@ -4,23 +4,24 @@ import sys
 import time
 from typing import List
 
-import albumentations
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torchvision
+from sklearn.decomposition import PCA
 from torch.utils.data import DataLoader
 
 from src.Client import Client, ClientsNetwork
-from src.Constants import NB_CLIENTS, DEBUG
+from src.Constants import NB_CLIENTS, DEBUG, INPUT_TYPE, OUTPUT_TYPE
 from src.FeaturesLearner import ReshapeTransform
+from src.PytorchScaler import StandardScaler
 
 DIRICHLET_COEF = 0.5
-PCA_NB_COMPONENTS = 10
+PCA_NB_COMPONENTS = 16
 
 
-def iid_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, nb_points_by_non_iid_clients: np.array)\
-        -> [List[np.ndarray], List[np.ndarray]]:
+def iid_split(data: torch.FloatTensor, labels: torch.FloatTensor, nb_clients: int,
+              nb_points_by_non_iid_clients: np.array) -> [List[torch.FloatTensor], List[torch.FloatTensor]]:
     nb_points = data.shape[0]
     X = []
     Y = []
@@ -34,8 +35,8 @@ def iid_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, nb_points_b
     return X, Y
 
 
-def dirichlet_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, dirichlet_coef: float) \
-        -> [List[np.ndarray], List[np.ndarray]]:
+def dirichlet_split(data: torch.FloatTensor, labels: torch.FloatTensor, nb_clients: int, dirichlet_coef: float) \
+        -> [List[torch.FloatTensor], List[torch.FloatTensor]]:
     nb_labels = len(np.unique(labels)) # Here data is not yet split. Thus nb_labels is correct.
     X = [[] for i in range(nb_clients)]
     Y = [[] for i in range(nb_clients)]
@@ -56,24 +57,25 @@ def dirichlet_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, diric
                 Y[idx_client][-1] = labels[labels == idx_label][random_idx:random_idx+1]
 
     for idx_client in range(nb_clients):
-        X[idx_client] = np.concatenate((X[idx_client]))
-        Y[idx_client] = np.concatenate(Y[idx_client])
+        X[idx_client] = torch.cat((X[idx_client]))
+        Y[idx_client] = torch.cat(Y[idx_client])
     return X, Y
 
 
-def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, nb_labels: int, split: bool, labels_type: str,
-                   iid: bool = False) -> List[Client]:
+def create_clients(nb_clients: int, data: torch.FloatTensor, labels: torch.FloatTensor, nb_labels: int, split: bool,
+                   dataset_name: str, iid: bool = False) -> List[Client]:
     clients = []
     if split:
         nb_points_by_non_iid_clients = np.array([x.shape[0] for x in data])
     else:
+        data, labels = data[0], labels[0]
         nb_points_by_non_iid_clients = np.array([len(labels) // nb_clients for i in range(nb_clients)])
     # It the dataset is already split and we don't want to create an iid dataset.
     if split and not iid:
         X, Y = data, labels
     else:
         if split:
-            data, labels = np.concatenate(data), np.concatenate(labels)
+            data, labels = torch.cat(data), torch.cat(labels)
         if iid:
             X, Y = iid_split(data, labels, nb_clients, nb_points_by_non_iid_clients)
         else:
@@ -82,7 +84,7 @@ def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, nb_lab
     # assert [len(np.unique(y)) for y in Y] == [nb_labels for y in Y], "Some labels are not represented on some clients."
     PCA_size = min(PCA_NB_COMPONENTS, min([len(x) for x in X]))
     for i in range(nb_clients):
-        clients.append(Client(i, X[i], Y[i], nb_labels, PCA_size, labels_type))
+        clients.append(Client(i, X[i], Y[i], nb_labels, dataset_name))
     return clients, PCA_size
 
 
@@ -97,12 +99,24 @@ def get_data_labels(fed_dataset, features_learner, dataset_name, train, kwargs, 
     data, labels = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset), **kwargs_loader)))
     if len(data.shape) > 2:
         data = torch.flatten(data, start_dim=1)
+    if len(labels.shape) > 2:
+        labels = torch.flatten(labels, start_dim=1)
     if features_learner:
         data = features_representation(data, dataset_name).detach()
-    # print("Shape features:", data.shape)
-    # print("Shape features:", labels.shape)
 
     return data, labels
+
+
+def compute_PCA_scikit(X: np.ndarray, PCA_size) -> np.ndarray:
+    # n_components must be between 0 and min(n_samples, n_features).
+    pca = PCA(n_components=PCA_size, svd_solver = 'randomized')
+    pca.fit(X)
+    return pca.transform(X)
+
+
+def compute_PCA(X: List[torch.FloatTensor], PCA_size):
+    U, S, V = torch.pca_lowrank(torch.cat(X), q=PCA_size, niter=50)
+    return [x @ V[:, :PCA_size] for x in X]
 
 
 def get_train_test_data(fed_dataset, features_learner, dataset_name, kwargs, kwargs_loader={}):
@@ -115,7 +129,7 @@ def get_train_test_data(fed_dataset, features_learner, dataset_name, kwargs, kwa
     return data, labels
 
 
-def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarray, np.ndarray]:
+def get_dataset(dataset_name: str, features_learner: bool = False) -> [torch.FloatTensor, torch.FloatTensor]:
 
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
@@ -130,7 +144,7 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
         kwargs = dict(root='../DATASETS/MNIST', download=False, transform=transform)
         kwargs_loader = dict(shuffle=False)
         data, labels = get_train_test_data(datasets.MNIST, features_learner, dataset_name, kwargs, kwargs_loader)
-        return data.numpy(), labels.numpy(), False
+        return data, labels, False
 
     elif dataset_name == "fashion_mnist":
         from torchvision import datasets
@@ -138,7 +152,7 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
         kwargs = dict(root='../DATASETS/FASHION_MNIST', download=False, transform=transform)
         kwargs_loader = dict(shuffle=False)
         data, labels = get_train_test_data(datasets.FashionMNIST, features_learner, dataset_name, kwargs, kwargs_loader)
-        return data.numpy(), labels.numpy(), False
+        return data, labels, False
 
     elif dataset_name == "camelyon16":
         sys.path.insert(0, '/home/constantin/Github/FLamby')
@@ -152,8 +166,8 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
             kwargs = dict(center=i, pooled=False, debug=DEBUG)
             kwargs_loader = dict(collate_fn=collate_fn)
             data, labels = get_train_test_data(FedCamelyon16, features_learner, dataset_name, kwargs, kwargs_loader)
-            X.append(data.numpy())
-            Y.append(labels.numpy())
+            X.append(data)
+            Y.append(labels)
         # In debug mode, there is only 5 pictures from the first center.
         if DEBUG:
             X, Y = [X[0][:2], X[0][2:]], [Y[0][:2], Y[0][2:]]
@@ -169,8 +183,8 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
         for i in range(NB_CLIENTS[dataset_name]):
             kwargs = dict(center=i, pooled=False)
             data, labels = get_train_test_data(FedHeartDisease, features_learner, dataset_name, kwargs)
-            X.append(data.numpy())
-            Y.append(np.concatenate(labels.numpy()))
+            X.append(data)
+            Y.append(labels)
         return X, Y, True
 
     elif dataset_name == "isic2019":
@@ -180,18 +194,11 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
         import datasets
         from datasets.fed_isic2019.dataset import FedIsic2019
         X, Y = [], []
-        sz = 200
-        train_aug = albumentations.Compose(
-            [
-                albumentations.RandomCrop(sz, sz),
-                albumentations.Normalize(always_apply=True),
-            ]
-        )
         for i in range(NB_CLIENTS[dataset_name]):
-            kwargs = dict(center=i, pooled=False)#, augmentations=train_aug)
+            kwargs = dict(center=i, pooled=False)
             data, labels = get_train_test_data(FedIsic2019, features_learner, dataset_name, kwargs)
-            X.append(data.numpy())
-            Y.append(labels.numpy())
+            X.append(data)
+            Y.append(labels)
         return X, Y, True
 
     elif dataset_name == "ixi":
@@ -204,8 +211,36 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
         for i in range(NB_CLIENTS[dataset_name]):
             kwargs = dict(center=i, pooled=False)
             data, labels = get_train_test_data(FedIXITiny, features_learner, dataset_name, kwargs)
-            X.append(data.numpy())
-            Y.append(np.concatenate(labels.numpy()))
+            X.append(data)
+            Y.append(labels)
+        return X, Y, True
+
+    elif dataset_name == "kits19":
+        sys.path.insert(0, '/home/constantin/Github/FLamby')
+        import flamby
+        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
+        import datasets
+        from datasets.fed_kits19.dataset import FedKits19
+        X, Y = [], []
+        for i in range(NB_CLIENTS[dataset_name]):
+            kwargs = dict(center=i, pooled=False)
+            data, labels = get_train_test_data(FedKits19, features_learner, dataset_name, kwargs)
+            X.append(data)
+            Y.append(labels)
+        return X, Y, True
+
+    elif dataset_name == "lidc_idri":
+        sys.path.insert(0, '/home/constantin/Github/FLamby')
+        import flamby
+        sys.path.insert(0, '/home/constantin/Github/FLamby/flamby')
+        import datasets
+        from datasets.fed_lidc_idri.dataset import FedLidcIdri
+        X, Y = [], []
+        for i in range(NB_CLIENTS[dataset_name]):
+            kwargs = dict(center=i, pooled=False)
+            data, labels = get_train_test_data(FedLidcIdri, features_learner, dataset_name, kwargs)
+            X.append(data)
+            Y.append(labels)
         return X, Y, True
 
     elif dataset_name == "tcga_brca":
@@ -224,8 +259,8 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
         for i in range(NB_CLIENTS[dataset_name]):
             kwargs = dict(center=i, pooled=False)
             data, labels = get_train_test_data(FedTcgaBrca, features_learner, dataset_name, kwargs)
-            X.append(data.numpy())
-            Y.append(labels.numpy()[:,1].reshape(-1, 1))
+            X.append(data)
+            Y.append(labels[:,1].reshape(-1, 1))
         # plot_distrib(Y, 0, 1)
         # plot_distrib(Y, 0, 2)
         # plot_distrib(Y, 0, 3)
@@ -236,25 +271,45 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [np.ndarra
     raise ValueError("{0}: the dataset is unknown.".format(dataset_name))
 
 
-def load_data(data: np.array, labels: np.array, splitted: bool, dataset_name: str, nb_clients: int,
+def normalize_data(data: List[torch.FloatTensor], labels: List[torch.FloatTensor], dataset_name: str):
+
+    # We normalize only if the data are tabular
+    if INPUT_TYPE[dataset_name] == "tabular":
+        scaler = StandardScaler()
+        scaler.fit(torch.cat(data))
+        data = [scaler.transform(x) for x in data]
+
+    # TODO : for pictures, we should use an autoencoders to reduce dimension
+    if not (data[0].shape[1] <= 20 or data[0].shape[0] <= 20):
+        data = compute_PCA(data, PCA_NB_COMPONENTS)
+
+    if OUTPUT_TYPE[dataset_name] == "image" and not (labels[0].shape[1] <= 20):
+        labels = compute_PCA(labels, PCA_NB_COMPONENTS)
+
+    return data, labels
+
+
+def load_data(data: torch.FloatTensor, labels: torch.FloatTensor, splitted: bool, dataset_name: str, nb_clients: int,
               labels_type: str, iid: bool = False) -> ClientsNetwork:
 
     print("Regenerating clients.")
+    print("Data shape:", data[0].shape[1:])
+    print("Labels shape:", labels[0].shape[1:])
     start = time.time()
 
     if splitted:
-        nb_labels = len(np.unique(np.concatenate(labels)))
+        nb_labels = len(torch.unique(torch.cat(labels)))
     else:
-        nb_labels = len(np.unique(labels))
+        nb_labels = len(torch.unique(labels[0]))
 
-    clients, PCA_size = create_clients(nb_clients, data, labels, nb_labels, splitted, labels_type, iid=iid)
-    if splitted:
-        central_client = Client("central", np.concatenate(data), np.concatenate(labels), nb_labels, PCA_size,
-                                labels_type)
-    else:
-        central_client = Client("central", data, labels, nb_labels, PCA_size, labels_type)
+    clients, PCA_size = create_clients(nb_clients, data, labels, nb_labels, splitted, dataset_name, iid=iid)
+    # if splitted:
+    #     central_client = Client("central", torch.cat(data), torch.cat(labels), nb_labels, PCA_size,
+    #                             labels_type)
+    # else:
+    #     central_client = Client("central", data, labels, nb_labels, PCA_size, labels_type)
 
-    clients_network = ClientsNetwork(dataset_name, clients, central_client, labels_type, iid)
+    clients_network = ClientsNetwork(dataset_name, clients, None, labels_type, iid)
 
     print("Elapsed time: {:.2f}s".format(time.time() - start))
 

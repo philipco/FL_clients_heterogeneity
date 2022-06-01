@@ -160,7 +160,8 @@ def get_dataloader(dataset_name: str) -> [DataLoader, nn.Module, Optimizer, _LRS
 
 def train_network(train_loader: DataLoader, model, optimizer, scheduler, criterion, dataset_name: str):
 
-    net = model
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    net = model.to(device)
 
     nb_epoch = 10 if dataset_name in ["mnist", "fashion_mnist"] else 50
     nb_step = len(train_loader)
@@ -168,6 +169,7 @@ def train_network(train_loader: DataLoader, model, optimizer, scheduler, criteri
         correct = 0
         for i, data in enumerate(train_loader, 0):
             inputs, labels = data
+            inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = net(inputs)
             loss = criterion(outputs, labels)
@@ -203,11 +205,16 @@ def features_transformation():
     dataset_name = DATASET_NAME
     train_loader, model, optimizer, scheduler, criterion = get_dataloader(dataset_name)
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Device:", device)
+    criterion = criterion.to(device)
+
     trained_network = train_network(train_loader, model, optimizer, scheduler, criterion, dataset_name)
 
     X, Y = [], []
     for i, data in enumerate(train_loader, 0):
         inputs, labels = data
+        inputs, labels = inputs.to(device), labels.to(device)
         X.append(trained_network(inputs))
         Y.append(labels)
 
