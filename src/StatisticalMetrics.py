@@ -5,11 +5,10 @@ from typing import List
 import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt, colors
-from mpl_toolkits.axes_grid1 import make_axes_locatable, axes_size
 
 import matplotlib
-from sklearn.cluster import AgglomerativeClustering, MeanShift, estimate_bandwidth
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.preprocessing import StandardScaler
 
 matplotlib.rcParams.update({
     "pgf.texsystem": "pdflatex",
@@ -164,7 +163,7 @@ class StatisticalMetrics:
         if not (np.diag(matrix_to_plot[1]) < 10e-3).all():
             print("WARNING: The diagonal of the non-iid distance's matrix is not null")
 
-        if scale:
+        if True:
             print("Standard scaling before plotting ...")
             # matrix_to_plot = scaling(np.array([remove_diagonal(matrix_to_plot[0], symmetric_matrix=False)]).reshape(-1, 1),
             #                          matrix_to_plot, StandardScaler())
@@ -186,7 +185,7 @@ class StatisticalMetrics:
 
         # We create a custom colormap with two range of values, one for negative values (in blues), and one for positive
         # values (red).
-        if scale:
+        if False:
             colors_neg = plt.cm.Blues(np.linspace(1, 0, 256))
             colors_pos = plt.cm.Reds(np.linspace(0, 1, 256))
             all_colors = np.vstack((colors_neg, colors_pos))
@@ -196,13 +195,13 @@ class StatisticalMetrics:
             cmap.set_bad((204/255, 204/255, 204/255, 0.25))
 
             divnorm = colors.TwoSlopeNorm(vmin=one_to_one_min, vcenter=0, vmax=one_to_one_max)
-            kwargs = dict(origin='lower', aspect="auto", cmap=cmap, norm=divnorm)
+            kwargs = dict(origin='lower', aspect="equal", cmap=cmap, norm=divnorm)
 
         else:
             # Simple colormap when values are only positive
             cmap = plt.cm.Reds
             cmap.set_bad((204/255, 204/255, 204/255, 0.25))
-            kwargs = dict(origin='lower', vmin=one_to_one_min, vmax=one_to_one_max, aspect="auto", cmap=cmap)
+            kwargs = dict(origin='lower', vmin=one_to_one_min, vmax=one_to_one_max, aspect="equal", cmap=cmap)
 
         # We set the diagonal at nan.
         matrix_to_plot[0][np.arange(self.nb_clients), np.arange(self.nb_clients)] = np.nan
@@ -230,25 +229,23 @@ class StatisticalMetrics:
                     yticks.append(y_non_iid+ size_y / 2)
             xticks.append(x_non_iid + size_x / 2)
             x_non_iid += size_x
-        axes[0].set_title(label=TITLES[0])
-        axes[1].set_title(label=TITLES[1])
+        # axes[0].set_title(label=TITLES[0])
+        # axes[1].set_title(label=TITLES[1])
 
         for ax in axes[:2]:
             ax.set_ylim(0, self.nb_clients)
             ax.set_xlim(0, self.nb_clients)
             ax.set_yticks(xticks)
             ax.set_xticks(xticks)
-            ax.set_xticklabels(clients_order)
-            ax.set_yticklabels(clients_order)
-            ax.set_xlabel("Client index")
+            ax.set_xticklabels(clients_order, fontsize=15)
+            ax.set_yticklabels(clients_order, fontsize=15)
+            # ax.set_xlabel("Client index")
 
-        divider = make_axes_locatable(axes[1])
-        cax = divider.append_axes("right", size="6%", pad=0.05)
-        fig.colorbar(im1, ax=axes[1], cax=cax)
+        cbar = fig.colorbar(im1, ax=axes[:], shrink=0.5)
 
         # axes[1].get_yaxis().set_visible(False)
-        plt.suptitle("{0} for {1}".format(suptitle, self.metrics_folder.split("/")[-1]), fontsize='xx-large',
-                     weight='extra bold')
+        # plt.suptitle("{0} for {1}".format(suptitle, self.metrics_folder.split("/")[-1]), fontsize='xx-large',
+        #              weight='extra bold')
         plt.savefig('{0}/{1}.eps'.format(self.metrics_folder, plot_name), format='eps', bbox_inches='tight')
         np.savetxt('{0}/{1}-iid.txt'.format(self.metrics_folder, plot_name), matrix_to_plot[0], delimiter=',')
         np.savetxt('{0}/{1}-non_iid.txt'.format(self.metrics_folder, plot_name), matrix_to_plot[1], delimiter=',')
