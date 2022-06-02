@@ -36,6 +36,7 @@ if __name__ == '__main__':
         data, labels = normalize_data(data, labels, dataset_name)
     else:
         data, labels = normalize_data([data], [labels], dataset_name)
+    my_metrics.set_clients_size(np.array([x.shape[0] for x in data]))
 
     # If the dataset has a naturel split, we need to load it only once.
     if splitted:

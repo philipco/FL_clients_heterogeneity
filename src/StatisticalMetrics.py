@@ -63,6 +63,9 @@ class StatisticalMetrics:
         create_folder_if_not_existing("pickle/{0}".format(self.dataset_name))
         pickle_saver(self, "pickle/{0}/stat_metrics".format(self.dataset_name))
 
+    def set_clients_size(self, clients_size):
+        self.clients_size = clients_size
+
     def set_metrics_on_Y(self, metrics_on_Y) -> None:
         if self.labels_type == "discrete":
             KL_distance_on_Y, TV_distance_on_Y = metrics_on_Y
