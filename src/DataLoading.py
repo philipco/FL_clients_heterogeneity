@@ -12,7 +12,7 @@ from sklearn.decomposition import PCA, IncrementalPCA
 from torch.utils.data import DataLoader
 
 from src.Client import Client, ClientsNetwork
-from src.Constants import NB_CLIENTS, DEBUG, INPUT_TYPE, OUTPUT_TYPE, NB_LABELS
+from src.Constants import NB_CLIENTS, DEBUG, INPUT_TYPE, OUTPUT_TYPE, NB_LABELS, BATCH_SIZE
 from src.FeaturesLearner import ReshapeTransform
 from src.PytorchScaler import StandardScaler
 
@@ -101,9 +101,6 @@ def features_representation(data, dataset_name):
     return model(data)
 
 
-BATCH_SIZE = 128
-
-
 def get_dataloader(fed_dataset, train, kwargs, kwargs_loader):
     dataset = fed_dataset(train=train, **kwargs)
     return DataLoader(dataset, batch_size=BATCH_SIZE, **kwargs_loader)
@@ -125,9 +122,12 @@ def fit_PCA(loader: DataLoader, ipca_data: IncrementalPCA, ipca_labels: Incremen
             y = torch.flatten(y, start_dim=1)
         if scaler is not None:
             x = scaler.transform(x)
-        if ipca_data is not None:
+
+        # To fit the PCA we must have a number of elements bigger than the PCA dimension, those we must drop the last
+        # batch if it doesn't contain enough elements.
+        if ipca_data is not None and x.shape[0] >= PCA_NB_COMPONENTS:
             ipca_data.partial_fit(x.numpy())
-        if ipca_labels is not None:
+        if ipca_labels is not None and y.shape[0] >= PCA_NB_COMPONENTS:
             ipca_labels.partial_fit(y.numpy())
     return ipca_data, ipca_labels
 
@@ -312,7 +312,8 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torc
         ipca_data, ipca_labels = fit_PCA_train_test(FedIXITiny, ipca_data, ipca_labels, scaler, kwargs)
         for i in range(NB_CLIENTS[dataset_name]):
             kwargs = dict(center=i, pooled=False)
-            data, labels = get_processed_train_test_data(FedIXITiny, dataset_name, ipca_data, ipca_labels, scaler, kwargs)
+            data, labels = get_processed_train_test_data(FedIXITiny, dataset_name, ipca_data, ipca_labels, scaler,
+                                                         kwargs)
             X.append(data)
             Y.append(labels)
         return X, Y, True

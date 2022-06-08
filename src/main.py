@@ -1,8 +1,6 @@
 """Created by Constantin Philippenko, 5th April 2022."""
 import argparse
 
-import matplotlib.pyplot as plt
-
 from src.ComputeDistance import *
 from src.Constants import NB_CLIENTS, NB_LABELS, OUTPUT_TYPE
 from src.DataLoading import load_data, get_dataset, normalize_data
@@ -32,6 +30,7 @@ if __name__ == '__main__':
                                     OUTPUT_TYPE[dataset_name])
 
     data, labels, splitted = get_dataset(dataset_name)
+    print_mem_usage("Got the dataset.")
     my_metrics.set_clients_size(np.array([x.shape[0] for x in data]))
 
     # If the dataset has a naturel split, we need to load it only once.
