@@ -17,19 +17,19 @@ def plot_metrics(X_max, X_mean, Y_max, Y_mean, entropy, datasets_name):
     reds = plt.cm.Reds
     blues = plt.cm.Blues
 
-    xmax = ax1.bar(ind, X_max, width, label="X max", lw=2, color=greens(0.3))
-    xmean = ax1.bar(ind, X_mean, width, label="X mean", lw=2, color=greens(0.5))
+    xmax = ax1.bar(ind, X_max, width, label="X max", lw=2, color=blues(0.4))
+    xmean = ax1.bar(ind, X_mean, width, label="X mean", lw=2, color=blues(0.8))
 
 
-    ymax = ax1.bar(ind + width, Y_max, width, label="Y max", lw=2, color=reds(0.6))
+    ymax = ax1.bar(ind + width, Y_max, width, label="Y max", lw=2, color=reds(0.4))
     ymean = ax1.bar(ind + width, Y_mean, width, label="Y mean", lw=2, color=reds(0.8))
 
     ax2 = ax1.twinx()
-    ent = ax2.bar(ind + 2*width, entropy, width, label="Entropy", lw=2, color=blues(0.7))
+    ent = ax2.bar(ind + 2*width, entropy, width, label="Entropy", lw=2, color=greens(0.6))
 
     ax1.tick_params(axis='x', labelsize=fontsize)
-    ax1.tick_params(axis='y', labelcolor=reds(0.9), labelsize=fontsize)
-    ax2.tick_params(axis='y', labelcolor=blues(0.9), labelsize=fontsize)
+    ax1.tick_params(axis='y', labelsize=fontsize)
+    ax2.tick_params(axis='y', labelcolor=greens(0.9), labelsize=fontsize)
 
     fig.tight_layout()
 

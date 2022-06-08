@@ -131,11 +131,11 @@ class ClientsNetwork:
     def print_Y_empirical_distribution_function(self):
         fig, ax1 = plt.subplots(figsize=(12,8))
         ax2 = ax1.twinx()
-        bins = np.histogram(np.hstack((self.clients[idx].Y.view(-1) for idx in range(len(self.clients)))),
+        bins = np.histogram(np.hstack((np.concatenate(self.clients[idx].Y) for idx in range(len(self.clients)))),
                             bins=40)[1]
         for idx in range(len(self.clients)):
             # fit a cdf
-            distrib_Y = self.clients[idx].Y.view(-1).numpy()
+            distrib_Y = np.concatenate(self.clients[idx].Y)
             ecdf = ECDF(distrib_Y)
             ax1.plot(ecdf.x, ecdf.y, label=idx)
             ax2.hist(distrib_Y, bins=bins, density=False, histtype='step', stacked=True, fill=False, lw=2, label=idx)
