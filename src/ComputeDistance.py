@@ -42,10 +42,6 @@ def compute_EM_distance(distrib1: np.ndarray, distrib2: np.ndarray, stochastic: 
     batch_size1, batch_size2 = nb_sample1 // nb_iteration, nb_sample2 // nb_iteration
     minibatch_emd = []
 
-    # TODO-WARNING : OT doesn't work using pytorch.
-    distrib1 = distrib1.numpy()
-    distrib2 = distrib2.numpy()
-
     for k in range(nb_iteration):
         sub_distrib1 = sub_sample(distrib1, batch_size1)
         sub_distrib2 = sub_sample(distrib2, batch_size2)
@@ -65,15 +61,6 @@ def compute_metrics_on_continuous_var(nb_clients: int, centralized_distribution:
     EM_distance_on_X = Distance(nb_clients)
     stochastic_emd = False if max([distrib.shape[0] for distrib in non_iid_clients_distributions]) <= 1000 else True
 
-
-    # Compute Earth Mover's distance
-    # for i in tqdm(range(nb_clients)):
-    #     EM_distance_iid = compute_EM_distance(iid_clients_distributions[i],
-    #                                           centralized_distribution)
-    #     EM_distance_non_iid = compute_EM_distance(non_iid_clients_distributions[i],
-    #                                               centralized_distribution)
-    #     EM_distance_on_X.set_distance_to_centralized(i, EM_distance_iid, EM_distance_non_iid)
-
     for i in tqdm(range(nb_clients)):
         for j in range(i, nb_clients):
             EM_distance_iid = compute_EM_distance(iid_clients_distributions[i],
@@ -91,17 +78,6 @@ def compute_metrics_on_discrete_var(nb_clients: int, centralized_distribution: n
                                     non_iid_clients_distributions: List[np.ndarray]) -> [Distance, Distance]:
 
     KL_distance_on_Y, TV_distance_on_Y = Distance(nb_clients), Distance(nb_clients)
-
-    # for i in range(nb_clients):
-    #     # Compute KL distance to centralized dataset
-    #     KL_distance_iid = compute_KL_distance(iid_clients_distributions[i], centralized_distribution)
-    #     KL_distance_non_iid = compute_KL_distance(non_iid_clients_distributions[i], centralized_distribution)
-    #     KL_distance_on_Y.set_distance_to_centralized(i, KL_distance_iid, KL_distance_non_iid)
-    #
-    #     # Compute TV distance to centralized dataset
-    #     TV_distance_iid = compute_TV_distance(iid_clients_distributions[i], centralized_distribution)
-    #     TV_distance_non_iid = compute_TV_distance(non_iid_clients_distributions[i], centralized_distribution)
-    #     TV_distance_on_Y.set_distance_to_centralized(i, TV_distance_iid, TV_distance_non_iid)
 
     # Compute TV distance (symmetric matrix) one to one.
     for i in range(nb_clients):

@@ -1,7 +1,5 @@
 """Created by Constantin Philippenko, 12th May 2022."""
 
-
-
 NB_LABELS = {"mnist": 10, "fashion_mnist": 10,
              "camelyon16": 2,  "heart_disease": 2, "isic2019": 8,
              "ixi": None, "kits19": None, "lidc_idri": None,  "tcga_brca": 2}
@@ -18,3 +16,4 @@ NB_CLIENTS = {"mnist": 10, "fashion_mnist": 10, "camelyon16": 2, "heart_disease"
               "ixi": 3, "kits19": 6, "lidc_idri": 5, "tcga_brca": 6}
 
 DEBUG = False
+BATCH_SIZE = 64
