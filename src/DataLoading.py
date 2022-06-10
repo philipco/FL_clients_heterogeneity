@@ -12,9 +12,11 @@ from sklearn.decomposition import PCA, IncrementalPCA
 from torch.utils.data import DataLoader
 
 from src.Client import Client, ClientsNetwork
-from src.Constants import NB_CLIENTS, DEBUG, INPUT_TYPE, OUTPUT_TYPE, NB_LABELS, BATCH_SIZE
+from src.Constants import NB_CLIENTS, DEBUG, INPUT_TYPE, OUTPUT_TYPE, NB_LABELS, PCA_BATCH_SIZE
 from src.FeaturesLearner import ReshapeTransform
+from src.PickleHandler import pickle_loader, pickle_saver
 from src.PytorchScaler import StandardScaler
+from src.Utilities import create_folder_if_not_existing, file_exist
 
 FLAMBY_PATH = '../FLamby'
 
@@ -103,7 +105,7 @@ def features_representation(data, dataset_name):
 
 def get_dataloader(fed_dataset, train, kwargs, kwargs_loader):
     dataset = fed_dataset(train=train, **kwargs)
-    return DataLoader(dataset, batch_size=BATCH_SIZE, **kwargs_loader)
+    return DataLoader(dataset, batch_size=PCA_BATCH_SIZE, **kwargs_loader)
 
 
 def compute_PCA_scikit(X: np.ndarray, PCA_size) -> np.ndarray:
@@ -185,6 +187,7 @@ def fit_PCA_train_test(fed_dataset, ipca_data, ipca_labels, scaler: StandardScal
     print("Fit Incremental PCA - done.")
     return ipca_data, ipca_labels
 
+
 def compute_mean_std(fed_dataset, kwargs, kwargs_loader={}):
 
     # Computing the mean
@@ -224,6 +227,12 @@ def fit_scaler(fed_dataset, dataset_name, kwargs):
 
 
 def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torch.FloatTensor], List[torch.FloatTensor]]:
+
+    pca_folder = "pickle/{0}".format(dataset_name)
+    create_folder_if_not_existing(pca_folder)
+    if file_exist("{0}/pca.pkl".format(pca_folder)):
+        dataset = pickle_loader("{0}/pca".format(pca_folder))
+        return dataset[0], dataset[1], dataset[2]
 
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
@@ -302,6 +311,7 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torc
             data, labels = get_processed_train_test_data(FedIsic2019, dataset_name, ipca_data, ipca_labels, scaler, kwargs)
             X.append(data)
             Y.append(labels)
+        pickle_saver([X, Y, True], "{0}/pca".format(pca_folder))
         return X, Y, True
 
     elif dataset_name == "ixi":
@@ -329,6 +339,7 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torc
             data, labels = get_processed_train_test_data(FedKits19, dataset_name, ipca_data, ipca_labels, scaler, kwargs)
             X.append(data)
             Y.append(labels)
+        pickle_saver([X, Y, True], "{0}/pca".format(pca_folder))
         return X, Y, True
 
     elif dataset_name == "lidc_idri":
@@ -342,6 +353,7 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torc
             data, labels = get_processed_train_test_data(FedLidcIdri, dataset_name, ipca_data, ipca_labels, scaler, kwargs)
             X.append(data)
             Y.append(labels)
+        pickle_saver([X, Y, True], "{0}/pca".format(pca_folder))
         return X, Y, True
 
     elif dataset_name == "tcga_brca":

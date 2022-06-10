@@ -11,7 +11,7 @@ from src.Utilities import print_mem_usage
 # DATASET_NAME = "tcga_brca" # kits19  # tcga_brca # ixi # heart_disease
 
 
-NB_RUNS = 20
+NB_RUNS = 50
 
 
 if __name__ == '__main__':
