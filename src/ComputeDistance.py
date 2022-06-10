@@ -4,7 +4,6 @@ from typing import List
 
 import numpy as np
 import ot
-import torch
 from tqdm import tqdm
 
 from src.Client import ClientsNetwork, NB_CLUSTER_ON_CONTINUOUS_VAR
@@ -38,12 +37,16 @@ def compute_EM_distance(distrib1: np.ndarray, distrib2: np.ndarray, stochastic: 
     assert len(distrib1) >= 1 and len(distrib2) >= 1, "Distributions must not be empty."
     assert len(distrib1[0]) <= 20, "Dimension is bigger than 20."
     nb_sample1, nb_sample2 = distrib1.shape[0], distrib2.shape[0]
-    nb_iteration = 20 if stochastic else 1
-    batch_size1, batch_size2 = nb_sample1 // nb_iteration, nb_sample2 // nb_iteration
+
+    percent_kept = 0.05 if stochastic else 1
+    batch_size1, batch_size2 = int(nb_sample1 * percent_kept), int(percent_kept * nb_sample2)
+
     minibatch_emd = []
 
-    for k in range(nb_iteration):
+    for k in range(int(2 * percent_kept ** -1)):
+        np.random.seed(k)
         sub_distrib1 = sub_sample(distrib1, batch_size1)
+        np.random.seed(k)
         sub_distrib2 = sub_sample(distrib2, batch_size2)
 
         cost_matrix = ot.dist(sub_distrib1, sub_distrib2)

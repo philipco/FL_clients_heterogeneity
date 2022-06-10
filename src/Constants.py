@@ -16,4 +16,4 @@ NB_CLIENTS = {"mnist": 10, "fashion_mnist": 10, "camelyon16": 2, "heart_disease"
               "ixi": 3, "kits19": 6, "lidc_idri": 5, "tcga_brca": 6}
 
 DEBUG = False
-BATCH_SIZE = 64
+PCA_BATCH_SIZE = 256
