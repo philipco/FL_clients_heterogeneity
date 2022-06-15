@@ -14,6 +14,3 @@ OUTPUT_TYPE = {"mnist": "discrete", "fashion_mnist": "discrete",
 
 NB_CLIENTS = {"mnist": 10, "fashion_mnist": 10, "camelyon16": 2, "heart_disease": 4, "isic2019": 6,
               "ixi": 3, "kits19": 6, "lidc_idri": 5, "tcga_brca": 6}
-
-DEBUG = False
-PCA_BATCH_SIZE = 256

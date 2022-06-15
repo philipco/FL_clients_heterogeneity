@@ -12,7 +12,7 @@ from sklearn.decomposition import PCA, IncrementalPCA
 from torch.utils.data import DataLoader
 
 from src.Client import Client, ClientsNetwork
-from src.Constants import NB_CLIENTS, DEBUG, INPUT_TYPE, OUTPUT_TYPE, NB_LABELS, PCA_BATCH_SIZE
+from src.Constants import NB_CLIENTS, INPUT_TYPE, OUTPUT_TYPE, NB_LABELS
 from src.FeaturesLearner import ReshapeTransform
 from src.PickleHandler import pickle_loader, pickle_saver
 from src.PytorchScaler import StandardScaler
@@ -105,7 +105,7 @@ def features_representation(data, dataset_name):
 
 def get_dataloader(fed_dataset, train, kwargs, kwargs_loader):
     dataset = fed_dataset(train=train, **kwargs)
-    return DataLoader(dataset, batch_size=PCA_BATCH_SIZE, **kwargs_loader)
+    return DataLoader(dataset, **kwargs_loader)
 
 
 def compute_PCA_scikit(X: np.ndarray, PCA_size) -> np.ndarray:
@@ -117,6 +117,8 @@ def compute_PCA_scikit(X: np.ndarray, PCA_size) -> np.ndarray:
 
 def fit_PCA(loader: DataLoader, ipca_data: IncrementalPCA, ipca_labels: IncrementalPCA = None,
             scaler: StandardScaler = None) -> [IncrementalPCA, IncrementalPCA]:
+    first = next(iter(loader))
+    print("Inputs shape: {0}\tLabels shape: {1}".format(first[0].shape, first[1].shape))
     for x, y in loader:
         if len(x.shape) > 2:
             x = torch.flatten(x, start_dim=1)
@@ -164,9 +166,8 @@ def normalize_data(loader: DataLoader, dataset_name: str, ipca_data: Incremental
     return data, labels
 
 
-def get_processed_train_test_data(fed_dataset, dataset_name, ipca_data: IncrementalPCA,
-                                  ipca_labels: IncrementalPCA, scaler: StandardScaler,
-                                  kwargs, kwargs_loader={}) -> [np.ndarray, np.ndarray]:
+def get_processed_train_test_data(fed_dataset, dataset_name, ipca_data: IncrementalPCA, ipca_labels: IncrementalPCA,
+                                  scaler: StandardScaler, kwargs, kwargs_loader) -> [np.ndarray, np.ndarray]:
 
     loader = get_dataloader(fed_dataset, train=True, kwargs=kwargs, kwargs_loader=kwargs_loader)
     data_train, labels_train = normalize_data(loader, dataset_name, ipca_data, ipca_labels, scaler)
@@ -177,18 +178,20 @@ def get_processed_train_test_data(fed_dataset, dataset_name, ipca_data: Incremen
     return np.concatenate([data_train, data_test]), np.concatenate([labels_train, labels_test])
 
 
-def fit_PCA_train_test(fed_dataset, ipca_data, ipca_labels, scaler: StandardScaler, kwargs, kwargs_loader={}):
+def fit_PCA_train_test(fed_dataset, ipca_data, ipca_labels, scaler: StandardScaler, kwargs, kwargs_loader):
 
     loader_train = get_dataloader(fed_dataset, train=True, kwargs=kwargs, kwargs_loader=kwargs_loader)
+    print("Fit PCA for train.")
     ipca_data, ipca_labels = fit_PCA(loader_train, ipca_data, ipca_labels, scaler)
     loader_test = get_dataloader(fed_dataset, train=False, kwargs=kwargs, kwargs_loader=kwargs_loader)
+    print("Fit PCA for test.")
     ipca_data, ipca_labels = fit_PCA(loader_test, ipca_data, ipca_labels, scaler)
 
-    print("Fit Incremental PCA - done.")
+    print("Incremental PCA computed.")
     return ipca_data, ipca_labels
 
 
-def compute_mean_std(fed_dataset, kwargs, kwargs_loader={}):
+def compute_mean_std(fed_dataset, kwargs, kwargs_loader):
 
     # Computing the mean
     loader = get_dataloader(fed_dataset, train=True, kwargs=kwargs, kwargs_loader=kwargs_loader)
@@ -218,15 +221,16 @@ def compute_mean_std(fed_dataset, kwargs, kwargs_loader={}):
     return mean, std
 
 
-def fit_scaler(fed_dataset, dataset_name, kwargs):
+def fit_scaler(fed_dataset, dataset_name, kwargs, kwargs_loader):
     # We normalize only if the data are tabular
     if INPUT_TYPE[dataset_name] == "tabular":
-        mean, std = compute_mean_std(fed_dataset, kwargs)
+        mean, std = compute_mean_std(fed_dataset, kwargs, kwargs_loader)
         return StandardScaler(mean=mean, std=std)
     return None
 
 
-def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torch.FloatTensor], List[torch.FloatTensor]]:
+def get_dataset(dataset_name: str, batch_size: int, debug: bool,
+                features_learner: bool = False) -> [List[torch.FloatTensor], List[torch.FloatTensor]]:
 
     pca_folder = "pickle/{0}".format(dataset_name)
     create_folder_if_not_existing(pca_folder)
@@ -244,13 +248,15 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torc
 
     ipca_data = IncrementalPCA(n_components=PCA_NB_COMPONENTS)
     ipca_labels = IncrementalPCA(n_components=PCA_NB_COMPONENTS) if OUTPUT_TYPE[dataset_name] == "image" else None
+    kwargs_loader = dict(batch_size=batch_size)
 
     if dataset_name == "mnist":
         from torchvision import datasets
         kwargs = dict(root='../DATASETS/MNIST', download=False, transform=transform)
-        kwargs_loader = dict(shuffle=False)
-        scaler = fit_scaler(datasets.MNIST, dataset_name, kwargs)
-        ipca_data, ipca_labels = fit_PCA_train_test(datasets.MNIST, ipca_data, ipca_labels, scaler, kwargs)
+        kwargs_loader['shuffle'] = False
+        scaler = fit_scaler(datasets.MNIST, dataset_name, kwargs, kwargs_loader)
+        ipca_data, ipca_labels = fit_PCA_train_test(datasets.MNIST, ipca_data, ipca_labels, scaler, kwargs,
+                                                    kwargs_loader)
         X, Y = get_processed_train_test_data(datasets.MNIST, dataset_name, ipca_data, ipca_labels, scaler, kwargs,
                                              kwargs_loader)
         return X, Y, False
@@ -259,9 +265,10 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torc
         from torchvision import datasets
         from torchvision import datasets
         kwargs = dict(root='../DATASETS/FASHION_MNIST', download=False, transform=transform)
-        kwargs_loader = dict(shuffle=False)
-        scaler = fit_scaler(datasets.FashionMNIST, dataset_name, kwargs)
-        ipca_data, ipca_labels = fit_PCA_train_test(datasets.FashionMNIST, ipca_data, ipca_labels, scaler, kwargs)
+        kwargs_loader['shuffle'] = False
+        scaler = fit_scaler(datasets.FashionMNIST, dataset_name, kwargs, kwargs_loader)
+        ipca_data, ipca_labels = fit_PCA_train_test(datasets.FashionMNIST, ipca_data, ipca_labels, scaler, kwargs,
+                                                    kwargs_loader)
         data, labels = get_processed_train_test_data(datasets.FashionMNIST,  dataset_name, ipca_data, ipca_labels,
                                                      scaler, kwargs, kwargs_loader)
         return data, labels, False
@@ -269,21 +276,23 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torc
     elif dataset_name == "camelyon16":
         from datasets.fed_camelyon16.dataset import FedCamelyon16, collate_fn
         X, Y = [], []
-        nb_of_client = 1 if DEBUG else NB_CLIENTS[dataset_name]
-        ipca_data = ipca_data if not DEBUG else None
-        kwargs_loader = dict(collate_fn=collate_fn)
-        kwargs = dict(pooled=True, debug=DEBUG)
-        scaler = fit_scaler(FedCamelyon16, dataset_name, kwargs)
-        ipca_data, ipca_labels = fit_PCA_train_test(FedCamelyon16, ipca_data, ipca_labels, scaler, kwargs, kwargs_loader)
+        nb_of_client = 1 if debug else NB_CLIENTS[dataset_name]
+        ipca_data = ipca_data if not debug else None
+        kwargs_loader['collate_fn'] = collate_fn
+        kwargs = dict(pooled=True, debug=debug)
+        scaler = fit_scaler(FedCamelyon16, dataset_name, kwargs, kwargs_loader)
+        ipca_data, ipca_labels = fit_PCA_train_test(FedCamelyon16, ipca_data, ipca_labels, scaler, kwargs,
+                                                    kwargs_loader)
         for i in range(nb_of_client):
-            kwargs = dict(center=i, pooled=False, debug=DEBUG)
-            data, labels = get_processed_train_test_data(FedCamelyon16, dataset_name, ipca_data, ipca_labels, scaler, kwargs,
-                                                         kwargs_loader)
+            kwargs = dict(center=i, pooled=False, debug=debug)
+            data, labels = get_processed_train_test_data(FedCamelyon16, dataset_name, ipca_data, ipca_labels, scaler,
+                                                         kwargs, kwargs_loader)
             X.append(data)
             Y.append(labels)
         # In debug mode, there is only 5 pictures from the first center.
-        if DEBUG:
+        if debug:
             X, Y = [X[0][:2], X[0][2:]], [Y[0][:2], Y[0][2:]]
+        pickle_saver([X, Y, True], "{0}/pca".format(pca_folder))
         return X, Y, True
 
     elif dataset_name == "heart_disease":
@@ -291,11 +300,13 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torc
         from datasets.fed_heart_disease.dataset import FedHeartDisease
         X, Y = [], []
         kwargs = dict(pooled=True)
-        scaler = fit_scaler(FedHeartDisease, dataset_name, kwargs)
-        ipca_data, ipca_labels = fit_PCA_train_test(FedHeartDisease, ipca_data, ipca_labels, scaler, kwargs)
+        scaler = fit_scaler(FedHeartDisease, dataset_name, kwargs, kwargs_loader)
+        ipca_data, ipca_labels = fit_PCA_train_test(FedHeartDisease, ipca_data, ipca_labels, scaler, kwargs,
+                                                    kwargs_loader)
         for i in range(NB_CLIENTS[dataset_name]):
             kwargs = dict(center=i, pooled=False)
-            data, labels = get_processed_train_test_data(FedHeartDisease, dataset_name, ipca_data, ipca_labels, scaler, kwargs)
+            data, labels = get_processed_train_test_data(FedHeartDisease, dataset_name, ipca_data, ipca_labels, scaler,
+                                                         kwargs, kwargs_loader)
             X.append(data)
             Y.append(labels)
         return X, Y, True
@@ -304,11 +315,12 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torc
         from datasets.fed_isic2019.dataset import FedIsic2019
         X, Y = [], []
         kwargs = dict(pooled=True)
-        scaler = fit_scaler(FedIsic2019, dataset_name, kwargs)
-        ipca_data, ipca_labels = fit_PCA_train_test(FedIsic2019, ipca_data, ipca_labels, scaler, kwargs)
+        scaler = fit_scaler(FedIsic2019, dataset_name, kwargs, kwargs_loader)
+        ipca_data, ipca_labels = fit_PCA_train_test(FedIsic2019, ipca_data, ipca_labels, scaler, kwargs, kwargs_loader)
         for i in range(NB_CLIENTS[dataset_name]):
             kwargs = dict(center=i, pooled=False)
-            data, labels = get_processed_train_test_data(FedIsic2019, dataset_name, ipca_data, ipca_labels, scaler, kwargs)
+            data, labels = get_processed_train_test_data(FedIsic2019, dataset_name, ipca_data, ipca_labels, scaler,
+                                                         kwargs, kwargs_loader)
             X.append(data)
             Y.append(labels)
         pickle_saver([X, Y, True], "{0}/pca".format(pca_folder))
@@ -318,12 +330,12 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torc
         from datasets.fed_ixi.dataset import FedIXITiny
         X, Y = [], []
         kwargs = dict(pooled=True)
-        scaler = fit_scaler(FedIXITiny, dataset_name, kwargs)
-        ipca_data, ipca_labels = fit_PCA_train_test(FedIXITiny, ipca_data, ipca_labels, scaler, kwargs)
+        scaler = fit_scaler(FedIXITiny, dataset_name, kwargs, kwargs_loader)
+        ipca_data, ipca_labels = fit_PCA_train_test(FedIXITiny, ipca_data, ipca_labels, scaler, kwargs, kwargs_loader)
         for i in range(NB_CLIENTS[dataset_name]):
             kwargs = dict(center=i, pooled=False)
             data, labels = get_processed_train_test_data(FedIXITiny, dataset_name, ipca_data, ipca_labels, scaler,
-                                                         kwargs)
+                                                         kwargs, kwargs_loader)
             X.append(data)
             Y.append(labels)
         return X, Y, True
@@ -332,11 +344,12 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torc
         from datasets.fed_kits19.dataset import FedKits19
         X, Y = [], []
         kwargs = dict(pooled=True)
-        scaler = fit_scaler(FedKits19, dataset_name, kwargs)
-        ipca_data, ipca_labels = fit_PCA_train_test(FedKits19, ipca_data, ipca_labels, scaler, kwargs)
+        scaler = fit_scaler(FedKits19, dataset_name, kwargs, kwargs_loader)
+        ipca_data, ipca_labels = fit_PCA_train_test(FedKits19, ipca_data, ipca_labels, scaler, kwargs, kwargs_loader)
         for i in range(NB_CLIENTS[dataset_name]):
             kwargs = dict(center=i, pooled=False)
-            data, labels = get_processed_train_test_data(FedKits19, dataset_name, ipca_data, ipca_labels, scaler, kwargs)
+            data, labels = get_processed_train_test_data(FedKits19, dataset_name, ipca_data, ipca_labels, scaler,
+                                                         kwargs, kwargs_loader)
             X.append(data)
             Y.append(labels)
         pickle_saver([X, Y, True], "{0}/pca".format(pca_folder))
@@ -346,11 +359,12 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torc
         from datasets.fed_lidc_idri.dataset import FedLidcIdri
         X, Y = [], []
         kwargs = dict(pooled=True)
-        scaler = fit_scaler(FedLidcIdri, dataset_name, kwargs)
-        ipca_data, ipca_labels = fit_PCA_train_test(FedLidcIdri, ipca_data, ipca_labels, scaler, kwargs)
+        scaler = fit_scaler(FedLidcIdri, dataset_name, kwargs, kwargs_loader)
+        ipca_data, ipca_labels = fit_PCA_train_test(FedLidcIdri, ipca_data, ipca_labels, scaler, kwargs, kwargs_loader)
         for i in range(NB_CLIENTS[dataset_name]):
             kwargs = dict(center=i, pooled=False)
-            data, labels = get_processed_train_test_data(FedLidcIdri, dataset_name, ipca_data, ipca_labels, scaler, kwargs)
+            data, labels = get_processed_train_test_data(FedLidcIdri, dataset_name, ipca_data, ipca_labels, scaler,
+                                                         kwargs, kwargs_loader)
             X.append(data)
             Y.append(labels)
         pickle_saver([X, Y, True], "{0}/pca".format(pca_folder))
@@ -360,11 +374,12 @@ def get_dataset(dataset_name: str, features_learner: bool = False) -> [List[torc
         from datasets.fed_tcga_brca.dataset import FedTcgaBrca
         X, Y = [], []
         kwargs = dict(pooled=True)
-        scaler = fit_scaler(FedTcgaBrca, dataset_name, kwargs)
-        ipca_data, ipca_labels = fit_PCA_train_test(FedTcgaBrca, ipca_data, ipca_labels, scaler, kwargs)
+        scaler = fit_scaler(FedTcgaBrca, dataset_name, kwargs, kwargs_loader)
+        ipca_data, ipca_labels = fit_PCA_train_test(FedTcgaBrca, ipca_data, ipca_labels, scaler, kwargs, kwargs_loader)
         for i in range(NB_CLIENTS[dataset_name]):
             kwargs = dict(center=i, pooled=False)
-            data, labels = get_processed_train_test_data(FedTcgaBrca, dataset_name, ipca_data, ipca_labels, scaler, kwargs)
+            data, labels = get_processed_train_test_data(FedTcgaBrca, dataset_name, ipca_data, ipca_labels, scaler,
+                                                         kwargs, kwargs_loader)
             X.append(data)
             Y.append(labels[:,1].reshape(-1, 1))
         # plot_distrib(Y, 0, 1)
@@ -381,8 +396,8 @@ def load_data(data: np.array, labels: np.array, splitted: bool, dataset_name: st
               labels_type: str, iid: bool = False) -> ClientsNetwork:
 
     print("Regenerating clients.")
-    print("Data shape:", data[0].shape[1:])
-    print("Labels shape:", labels[0].shape[1:])
+    print("Data dimension:", data[0].shape[1:])
+    print("Labels dimension:", labels[0].shape[1:])
     start = time.time()
 
     nb_labels = NB_LABELS[dataset_name]
