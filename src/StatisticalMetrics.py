@@ -150,7 +150,7 @@ class StatisticalMetrics:
         plt.suptitle(suptitle, fontsize ='xx-large', weight ='extra bold')
         plt.savefig('{0}/{1}_grouped_hist.png'.format(self.metrics_folder, plot_name), dvi=1000, bbox_inches='tight')
 
-    def plot_distance(self, distance: DistanceForSeveralRuns, suptitle: str, plot_name: str, scale: bool,
+    def plot_distance(self, distance: DistanceForSeveralRuns, plot_name: str, scale: bool,
                       reorder: bool = False) -> None:
 
         if distance.is_empty(): return
@@ -244,7 +244,8 @@ class StatisticalMetrics:
             ax.set_yticklabels(clients_order, fontsize=15)
             # ax.set_xlabel("Client index")
 
-        cbar = fig.colorbar(im1, ax=axes[:], shrink=0.5)
+        cbar = fig.colorbar(im1, ax=axes[:], shrink=0.5) #, format=FuncFormatter(fmt))
+        cbar.formatter.set_powerlimits((0, 0))
 
         # axes[1].get_yaxis().set_visible(False)
         # plt.suptitle("{0} for {1}".format(suptitle, self.metrics_folder.split("/")[-1]), fontsize='xx-large',
@@ -257,17 +258,14 @@ class StatisticalMetrics:
         plot_name = "Y"
         print("Plot metric on ", plot_name)
         if self.labels_type == "discrete":
-            self.plot_distance(self.KL_distance_on_Y, r"KL distance for ${0}$".format(plot_name),
-                               "{0}_KL".format(plot_name), scale=False)
-            self.plot_distance(self.TV_distance_on_Y, r"TV distance for ${0}$".format(plot_name),
-                               "{0}_TV".format(plot_name), scale=False)
+            self.plot_distance(self.KL_distance_on_Y,"{0}_KL".format(plot_name), scale=False)
+            self.plot_distance(self.TV_distance_on_Y, "{0}_TV".format(plot_name), scale=False)
             self.plot_histogram(self.KL_distance_on_Y, r"KL distance for ${0}$".format(plot_name),
                                 "{0}_KL".format(plot_name))
             self.plot_histogram(self.TV_distance_on_Y, r"TV distance for ${0}$".format(plot_name),
                                 "{0}_TV".format(plot_name), symmetric_matrix = True)
         elif self.labels_type in ["continuous", "image"]:
-            self.plot_distance(self.EM_distance_on_Y, r"Wasserstein distance for ${0}$".format(plot_name),
-                               "{0}".format(plot_name), scale=True)
+            self.plot_distance(self.EM_distance_on_Y, "{0}".format(plot_name), scale=True)
             self.plot_histogram(self.EM_distance_on_Y, r"Wasserstein distance for ${0}$".format(plot_name),
                                 "{0}".format(plot_name), symmetric_matrix=True)
         else:
@@ -276,16 +274,14 @@ class StatisticalMetrics:
     def plot_X_metrics(self) -> None:
         plot_name = "X"
         print("Plot metric on ", plot_name)
-        self.plot_distance(self.EM_distance_on_X, r"Wasserstein distance for ${0}$".format(plot_name),
-                           "{0}".format(plot_name), scale=True)
+        self.plot_distance(self.EM_distance_on_X, "{0}".format(plot_name), scale=True)
         self.plot_histogram(self.EM_distance_on_X, r"Wasserstein distance for ${0}$".format(plot_name),
                             "{0}".format(plot_name), symmetric_matrix=True)
 
     def plot_X_given_Y_metrics(self) -> None:
         for y in range(self.nb_labels):
             plot_name = r"X|Y={0}".format(y)
-            self.plot_distance(self.EM_distance_on_X_given_Y[y], r"Wasserstein distance for ${0}$".format(plot_name),
-                               "{0}".format(plot_name))
+            self.plot_distance(self.EM_distance_on_X_given_Y[y], "{0}".format(plot_name))
             self.plot_histogram(self.EM_distance_on_X_given_Y[y], r"Wasserstein distance for ${0}$".format(plot_name),
                                 "{0}".format(plot_name), symmetric_matrix=True)
         self.plot_grouped_histogram(self.EM_distance_on_X_given_Y, r"Wasserstein distance for $X|Y$", "X|Y",
@@ -295,10 +291,8 @@ class StatisticalMetrics:
         if self.labels_type == "discrete":
             for x in range(NB_CLUSTER_ON_CONTINUOUS_VAR):
                 plot_name = r"Y|X={0}".format(x)
-                self.plot_distance(self.KL_distance_on_Y_given_X[x], r"KL distance for ${0}$".format(plot_name),
-                                   "{0}_KL".format(plot_name))
-                self.plot_distance(self.TV_distance_on_Y_given_X[x], r"TV distance for ${0}$".format(plot_name),
-                                   "{0}_TV".format(plot_name))
+                self.plot_distance(self.KL_distance_on_Y_given_X[x], "{0}_KL".format(plot_name))
+                self.plot_distance(self.TV_distance_on_Y_given_X[x], "{0}_TV".format(plot_name))
                 self.plot_histogram(self.KL_distance_on_Y_given_X[x], r"KL distance for ${0}$".format(plot_name),
                                     "{0}_KL".format(plot_name))
                 self.plot_histogram(self.TV_distance_on_Y_given_X[x], r"TV distance for ${0}$".format(plot_name),
