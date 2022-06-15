@@ -23,13 +23,29 @@ if __name__ == '__main__':
         help="The dataset name.",
         required=True,
     )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        help="Batch size of the dataloader.",
+        required=False,
+        default=256,
+    )
+    parser.add_argument(
+        "--debug",
+        type=bool,
+        help="Use debug or not for Camelyon16.",
+        required=False,
+        default=False,
+    )
     args = parser.parse_args()
     dataset_name = args.dataset
+    batch_size = args.batch_size
+    debug = args.debug
 
     my_metrics = StatisticalMetrics(dataset_name, NB_CLIENTS[dataset_name], NB_LABELS[dataset_name],
                                     OUTPUT_TYPE[dataset_name])
 
-    data, labels, splitted = get_dataset(dataset_name)
+    data, labels, splitted = get_dataset(dataset_name, batch_size, debug)
     print_mem_usage("Got the dataset.")
     my_metrics.set_clients_size(np.array([x.shape[0] for x in data]))
 
