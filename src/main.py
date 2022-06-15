@@ -4,6 +4,7 @@ import argparse
 from src.ComputeDistance import *
 from src.Constants import NB_CLIENTS, NB_LABELS, OUTPUT_TYPE
 from src.DataLoading import load_data, get_dataset, normalize_data
+from src.PickleHandler import pickle_loader
 from src.StatisticalMetrics import StatisticalMetrics
 from src.Utilities import print_mem_usage
 
@@ -12,6 +13,11 @@ from src.Utilities import print_mem_usage
 
 
 NB_RUNS = 50
+
+def plot_distance_X_and_Y(my_metrics: StatisticalMetrics):
+
+    my_metrics.plot_X_metrics()
+    my_metrics.plot_Y_metrics()
 
 
 if __name__ == '__main__':
@@ -37,21 +43,32 @@ if __name__ == '__main__':
         required=False,
         default=False,
     )
+    parser.add_argument(
+        "--plot_only",
+        type=bool,
+        help="Don't recompute ditances, only plotting.",
+        required=False,
+        default=False,
+    )
     args = parser.parse_args()
     dataset_name = args.dataset
     batch_size = args.batch_size
     debug = args.debug
+    plot_only = args.plot_only
 
+    if plot_only:
+        my_metrics = pickle_loader("pickle/{0}/stat_metrics".format(dataset_name))
+        plot_distance_X_and_Y(my_metrics)
+        exit()
     my_metrics = StatisticalMetrics(dataset_name, NB_CLIENTS[dataset_name], NB_LABELS[dataset_name],
                                     OUTPUT_TYPE[dataset_name])
 
     data, labels, splitted = get_dataset(dataset_name, batch_size, debug)
-    print_mem_usage("Got the dataset.")
+    print_mem_usage("Got the dataset, nb of samples: {0}".format(np.sum([d.shape[0] for d in data])))
     my_metrics.set_clients_size(np.array([x.shape[0] for x in data]))
 
     # If the dataset has a naturel split, we need to load it only once.
-    if splitted:
-        non_iid_clients_network = load_data(data, labels, splitted, dataset_name, NB_CLIENTS[dataset_name],
+    non_iid_clients_network = load_data(data, labels, splitted, dataset_name, NB_CLIENTS[dataset_name],
                                             OUTPUT_TYPE[dataset_name], iid=False)
 
     for i in range(NB_RUNS):
@@ -87,9 +104,7 @@ if __name__ == '__main__':
 
     my_metrics.set_nb_points_by_non_iid_clients(np.array([len(c.Y) for c in non_iid_clients_network.clients]))
     my_metrics.save_itself()
+    plot_distance_X_and_Y(my_metrics)
 
-
-    my_metrics.plot_X_metrics()
-    my_metrics.plot_Y_metrics()
     # my_metrics.plot_X_given_Y_metrics()
     # my_metrics.plot_Y_given_X_metrics()

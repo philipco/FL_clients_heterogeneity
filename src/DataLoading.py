@@ -338,6 +338,7 @@ def get_dataset(dataset_name: str, batch_size: int, debug: bool,
                                                          kwargs, kwargs_loader)
             X.append(data)
             Y.append(labels)
+        pickle_saver([X, Y, True], "{0}/pca".format(pca_folder))
         return X, Y, True
 
     elif dataset_name == "kits19":
