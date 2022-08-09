@@ -14,6 +14,8 @@ seaborn
 psutil
 pandas
 
+tabulate
+
 # Required by Flamby
 albumentations
 efficientnet_pytorch

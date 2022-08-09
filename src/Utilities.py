@@ -14,7 +14,7 @@ def get_project_root() -> str:
     path = str(pathlib.Path().absolute())
     root_dir = str(Path(__file__).parent.parent)
     split = path.split(root_dir)
-    return split[0] + "/" + root_dir
+    return root_dir
 
 
 def create_folder_if_not_existing(folder) -> None:
