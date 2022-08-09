@@ -31,6 +31,8 @@ def plot_metrics(X_max, X_mean, Y_max, Y_mean, entropy, datasets_name):
     ax1.tick_params(axis='y', labelsize=fontsize)
     ax2.tick_params(axis='y', labelcolor=greens(0.9), labelsize=fontsize)
 
+    ax1.set_ylim([0, np.max(np.concatenate([X_max[1:], X_mean[1:], Y_max, Y_mean]))])
+
     fig.tight_layout()
 
     legends = [xmax, xmean, ymax, ymean, ent]
@@ -49,15 +51,19 @@ def compute_entropy(clients_size: np.ndarray):
 
 if __name__ == '__main__':
 
-    dataset_names = ["heart_disease", "ixi", "tcga_brca"]
-
+    dataset_names = ["camelyon16", "ixi", "tcga_brca", "kits19", "isic2019", "heart_disease"]
+    string = ""
+    for name in dataset_names:
+        string += name + " & "
+    print(string)
 
     X_max, X_mean = [], []
     Y_max, Y_mean = [], []
     entropy = []
 
+    root = get_project_root()
     for dataset_name in dataset_names:
-        clients_size = pickle_loader("{0}/pickle/{1}/stat_metrics".format(get_project_root(), dataset_name)).clients_size
+        clients_size = pickle_loader("{0}/pickle/{1}/stat_metrics".format(root, dataset_name)).clients_size
         entropy.append(compute_entropy(clients_size))
         non_iid_distance_X, non_iid_distance_Y = open_matrix(dataset_name)
         non_iid_distance_X = non_iid_distance_X[~np.isnan(non_iid_distance_X)]
@@ -66,6 +72,14 @@ if __name__ == '__main__':
         X_mean.append(np.mean(non_iid_distance_X))
         Y_max.append(np.max(non_iid_distance_Y))
         Y_mean.append(np.mean(non_iid_distance_Y))
+
+    from tabulate import tabulate
+
+    # dataset_names_for_latex = ["camelyon16", "heart disease", "isic2019", "ixi", "kits19", "tcga brca"]
+    table = np.array([X_mean, X_max, Y_mean, Y_max, entropy])
+    column1 = np.array([["X mean"], ["X max"], ["Y mean"], ["Y max"], ["Entropy"]])
+    table = np.append(column1, table, axis=1)
+    print(tabulate(table, tablefmt="latex", floatfmt=".2f"))
 
     plot_metrics(X_max, X_mean, Y_max, Y_mean, entropy, dataset_names)
     # plot_metrics(Y_max, Y_mean, dataset_names)

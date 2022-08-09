@@ -175,6 +175,8 @@ def get_processed_train_test_data(fed_dataset, dataset_name, ipca_data: Incremen
     loader = get_dataloader(fed_dataset, train=False, kwargs=kwargs, kwargs_loader=kwargs_loader)
     data_test, labels_test = normalize_data(loader, dataset_name, ipca_data, ipca_labels, scaler)
 
+    print("Train data shape:", data_train.shape)
+    print("Test data shape:", data_test.shape)
     return np.concatenate([data_train, data_test]), np.concatenate([labels_train, labels_test])
 
 
@@ -359,11 +361,14 @@ def get_dataset(dataset_name: str, batch_size: int, debug: bool,
     elif dataset_name == "lidc_idri":
         from datasets.fed_lidc_idri.dataset import FedLidcIdri
         X, Y = [], []
-        kwargs = dict(pooled=True)
+        kwargs = dict(pooled=True, debug=debug)
         scaler = fit_scaler(FedLidcIdri, dataset_name, kwargs, kwargs_loader)
-        ipca_data, ipca_labels = fit_PCA_train_test(FedLidcIdri, ipca_data, ipca_labels, scaler, kwargs, kwargs_loader)
+        # nb_of_client = 1 if debug else NB_CLIENTS[dataset_name]
+        ipca_data = ipca_data if not debug else None
+        ipca_labels = ipca_labels if not debug else None
+        # ipca_data, ipca_labels = fit_PCA_train_test(FedLidcIdri, ipca_data, ipca_labels, scaler, kwargs, kwargs_loader)
         for i in range(NB_CLIENTS[dataset_name]):
-            kwargs = dict(center=i, pooled=False)
+            kwargs = dict(center=i, pooled=False, debug=debug)
             data, labels = get_processed_train_test_data(FedLidcIdri, dataset_name, ipca_data, ipca_labels, scaler,
                                                          kwargs, kwargs_loader)
             X.append(data)
