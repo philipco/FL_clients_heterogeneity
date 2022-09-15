@@ -55,7 +55,7 @@ class DistanceForSeveralRuns:
 
 def remove_diagonal(distribution: np.array, symmetric_matrix) -> np.array:
 
-    # If the matrix is symetric, we also need to remove symmetric elements.
+    # If the matrix is symmetric, we also need to remove symmetric elements.
     if symmetric_matrix:
         r, c = np.triu_indices(len(distribution), 1)
         return distribution[r, c]

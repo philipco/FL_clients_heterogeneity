@@ -1,9 +1,55 @@
 """Created by Constantin Philippenko, 1st June 2022."""
 import numpy as np
 from matplotlib import pyplot as plt
+from scipy.stats import mannwhitneyu, wilcoxon, ttest_ind
 
+from src.Distance import remove_diagonal
 from src.PickleHandler import pickle_loader
 from src.Utilities import open_matrix, get_project_root
+
+
+def plot_pvalues(X_pvalues, Y_pvalues, entropy, datasets_name):
+    width = 0.25
+    fontsize = 12
+
+    fig, ax1 = plt.subplots()
+
+    ind = np.arange(len(datasets_name))
+
+    greens = plt.cm.Greens
+    reds = plt.cm.Reds
+    blues = plt.cm.Blues
+
+    # xmax = ax1.bar(ind, X_max, width, label="X max", lw=2, color=blues(0.4))
+    x_pvalues = ax1.bar(ind, X_pvalues, width, label="X pvalue", lw=2, color=blues(0.8))
+
+    # ymax = ax1.bar(ind + width, Y_max, width, label="Y max", lw=2, color=reds(0.4))
+    y_pvalues = ax1.bar(ind + width, Y_pvalues, width, label="Y pvalue", lw=2, color=reds(0.8))
+    x = np.linspace(0, len(X_pvalues))
+    y = [0.05 for k in x]
+    threshold = ax1.plot(x, y, color='k', label='p=0.05')
+
+    ax2 = ax1.twinx()
+    ent = ax2.bar(ind + 2*width, entropy, width, label="Entropy", lw=2, color=greens(0.6))
+
+    ax1.tick_params(axis='x', labelsize=fontsize)
+    ax1.tick_params(axis='y', labelsize=fontsize)
+    ax2.tick_params(axis='y', labelcolor=greens(0.9), labelsize=fontsize)
+
+    ax1.set_yscale("log")
+
+    # ax1.set_ylim([0, np.max(np.concatenate([X_max[1:], X_mean[1:], Y_max, Y_mean]))])
+
+    fig.tight_layout()
+
+    legends = [x_pvalues, y_pvalues, ent, threshold[0]]
+    labels = [l.get_label() for l in legends]
+    plt.legend(legends, labels, loc="best", fontsize=fontsize)
+
+    plt.xticks(ind + width / 2, datasets_name)
+
+    plt.savefig('{0}/{1}.pdf'.format("{0}/pictures".format(get_project_root()), "pvalues"), format='pdf', bbox_inches='tight')
+
 
 def plot_metrics(X_max, X_mean, Y_max, Y_mean, entropy, datasets_name):
     width = 0.25
@@ -59,6 +105,7 @@ if __name__ == '__main__':
 
     X_max, X_mean = [], []
     Y_max, Y_mean = [], []
+    X_pvalues, Y_pvalues = [], []
     entropy = []
 
     root = get_project_root()
@@ -73,6 +120,25 @@ if __name__ == '__main__':
         Y_max.append(np.max(non_iid_distance_Y))
         Y_mean.append(np.mean(non_iid_distance_Y))
 
+        iid_distance_X, iid_distance_Y = open_matrix(dataset_name, iid=True)
+        non_iid_distance_X, non_iid_distance_Y = open_matrix(dataset_name)
+        _, p = ttest_ind(remove_diagonal(iid_distance_X, True),
+                        remove_diagonal(non_iid_distance_X, True),
+                         equal_var=False)
+                        # alternative="two-sided",
+                        # zero_method="zsplit",
+                        # correction=True,
+                        #      method="exact")
+        X_pvalues.append(p)
+        _, p = ttest_ind(remove_diagonal(iid_distance_Y, True),
+                            remove_diagonal(non_iid_distance_Y, True),
+                         equal_var=False)
+                        #     alternative="two-sided",
+                        # correction=True,
+                        # zero_method="zsplit",
+                        #     method="exact")
+        Y_pvalues.append(p)
+
     from tabulate import tabulate
 
     # dataset_names_for_latex = ["camelyon16", "heart disease", "isic2019", "ixi", "kits19", "tcga brca"]
@@ -82,5 +148,6 @@ if __name__ == '__main__':
     print(tabulate(table, tablefmt="latex", floatfmt=".2f"))
 
     plot_metrics(X_max, X_mean, Y_max, Y_mean, entropy, dataset_names)
+    plot_pvalues(X_pvalues, Y_pvalues, entropy, dataset_names)
     # plot_metrics(Y_max, Y_mean, dataset_names)
 
