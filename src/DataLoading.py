@@ -16,6 +16,7 @@ from src.Constants import NB_CLIENTS, INPUT_TYPE, OUTPUT_TYPE, NB_LABELS
 from src.FeaturesLearner import ReshapeTransform
 from src.PickleHandler import pickle_loader, pickle_saver
 from src.PytorchScaler import StandardScaler
+from src.Split import iid_split, dirichlet_split
 from src.Utilities import create_folder_if_not_existing, file_exist
 
 FLAMBY_PATH = '../FLamby'
@@ -27,48 +28,6 @@ import datasets
 
 DIRICHLET_COEF = 0.5
 PCA_NB_COMPONENTS = 16
-
-
-def iid_split(data: np.ndarray, labels: np.ndarray, nb_clients: int,
-              nb_points_by_non_iid_clients: np.array) -> [List[np.ndarray], List[np.ndarray]]:
-    nb_points = data.shape[0]
-    X = []
-    Y = []
-    indices = np.arange(nb_points)
-    np.random.shuffle(indices)
-    idx_split = [np.sum(nb_points_by_non_iid_clients[:i]) for i in range(1, nb_clients)]
-    split_indices = np.array_split(indices, idx_split)
-    for i in range(nb_clients):
-        X.append(data[split_indices[i]])
-        Y.append(labels[split_indices[i]])
-    return X, Y
-
-
-def dirichlet_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, dirichlet_coef: float) \
-        -> [List[np.ndarray], List[np.ndarray]]:
-    nb_labels = len(np.unique(labels)) # Here data is not yet split. Thus nb_labels is correct.
-    X = [[] for i in range(nb_clients)]
-    Y = [[] for i in range(nb_clients)]
-    for idx_label in range(nb_labels):
-        proportions = np.random.dirichlet(np.repeat(dirichlet_coef, nb_clients))
-        assert round(proportions.sum()) == 1, "The sum of proportion is not equal to 1."
-        last_idx = 0
-        N = len(labels[labels == idx_label])
-        for idx_client in range(nb_clients):
-            X[idx_client].append(data[labels == idx_label][last_idx:last_idx + int(proportions[idx_client] * N)])
-            Y[idx_client].append(labels[labels == idx_label][last_idx:last_idx + int(proportions[idx_client] * N)])
-            last_idx += int(proportions[idx_client] * N)
-
-            # If the client hasn't receive this kind of label we add at least one !
-            if len(X[idx_client][-1]) == 0:
-                random_idx = random.randint(0,len(data[labels == idx_label]) - 1)
-                X[idx_client][-1] = data[labels == idx_label][random_idx:random_idx+1]
-                Y[idx_client][-1] = labels[labels == idx_label][random_idx:random_idx+1]
-
-    for idx_client in range(nb_clients):
-        X[idx_client] = np.concatenate((X[idx_client]))
-        Y[idx_client] = np.concatenate(Y[idx_client])
-    return X, Y
 
 
 def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, nb_labels: int, split: bool,
@@ -103,9 +62,9 @@ def features_representation(data, dataset_name):
     return model(data)
 
 
-def get_dataloader(fed_dataset, train, kwargs, kwargs_loader):
-    dataset = fed_dataset(train=train, **kwargs)
-    return DataLoader(dataset, **kwargs_loader)
+def get_dataloader(fed_dataset, train, kwargs_dataset, kwargs_dataloader):
+    dataset = fed_dataset(train=train, **kwargs_dataset)
+    return DataLoader(dataset, **kwargs_dataloader)
 
 
 def compute_PCA_scikit(X: np.ndarray, PCA_size) -> np.ndarray:
@@ -167,12 +126,12 @@ def normalize_data(loader: DataLoader, dataset_name: str, ipca_data: Incremental
 
 
 def get_processed_train_test_data(fed_dataset, dataset_name, ipca_data: IncrementalPCA, ipca_labels: IncrementalPCA,
-                                  scaler: StandardScaler, kwargs, kwargs_loader) -> [np.ndarray, np.ndarray]:
+                                  scaler: StandardScaler, kwargs_dataset, kwargs_dataloader) -> [np.ndarray, np.ndarray]:
 
-    loader = get_dataloader(fed_dataset, train=True, kwargs=kwargs, kwargs_loader=kwargs_loader)
+    loader = get_dataloader(fed_dataset, train=True, kwargs_dataset=kwargs_dataset, kwargs_dataloader=kwargs_dataloader)
     data_train, labels_train = normalize_data(loader, dataset_name, ipca_data, ipca_labels, scaler)
 
-    loader = get_dataloader(fed_dataset, train=False, kwargs=kwargs, kwargs_loader=kwargs_loader)
+    loader = get_dataloader(fed_dataset, train=False, kwargs_dataset=kwargs_dataset, kwargs_dataloader=kwargs_dataloader)
     data_test, labels_test = normalize_data(loader, dataset_name, ipca_data, ipca_labels, scaler)
 
     print("Train data shape:", data_train.shape)
@@ -180,12 +139,12 @@ def get_processed_train_test_data(fed_dataset, dataset_name, ipca_data: Incremen
     return np.concatenate([data_train, data_test]), np.concatenate([labels_train, labels_test])
 
 
-def fit_PCA_train_test(fed_dataset, ipca_data, ipca_labels, scaler: StandardScaler, kwargs, kwargs_loader):
+def fit_PCA_for_train_and_test(fed_dataset, ipca_data, ipca_labels, scaler: StandardScaler, kwargs_dataset, kwargs_dataloader):
 
-    loader_train = get_dataloader(fed_dataset, train=True, kwargs=kwargs, kwargs_loader=kwargs_loader)
+    loader_train = get_dataloader(fed_dataset, train=True, kwargs_dataset=kwargs_dataset, kwargs_dataloader=kwargs_dataloader)
     print("Fit PCA for train.")
     ipca_data, ipca_labels = fit_PCA(loader_train, ipca_data, ipca_labels, scaler)
-    loader_test = get_dataloader(fed_dataset, train=False, kwargs=kwargs, kwargs_loader=kwargs_loader)
+    loader_test = get_dataloader(fed_dataset, train=False, kwargs_dataset=kwargs_dataset, kwargs_dataloader=kwargs_dataloader)
     print("Fit PCA for test.")
     ipca_data, ipca_labels = fit_PCA(loader_test, ipca_data, ipca_labels, scaler)
 
@@ -193,29 +152,29 @@ def fit_PCA_train_test(fed_dataset, ipca_data, ipca_labels, scaler: StandardScal
     return ipca_data, ipca_labels
 
 
-def compute_mean_std(fed_dataset, kwargs, kwargs_loader):
+def compute_mean_std(fed_dataset, kwargs_dataset, kwargs_dataloader):
 
     # Computing the mean
-    loader = get_dataloader(fed_dataset, train=True, kwargs=kwargs, kwargs_loader=kwargs_loader)
+    loader = get_dataloader(fed_dataset, train=True, kwargs_dataset=kwargs_dataset, kwargs_dataloader=kwargs_dataloader)
     total_sum = 0
     nb_points = 0
     for x, y in loader:
         dims = list(range(x.dim() - 1))
         total_sum += torch.sum(x, dim=dims)
         nb_points += x.shape[0]
-    loader = get_dataloader(fed_dataset, train=False, kwargs=kwargs, kwargs_loader=kwargs_loader)
+    loader = get_dataloader(fed_dataset, train=False, kwargs_dataset=kwargs_dataset, kwargs_dataloader=kwargs_dataloader)
     for x, y in loader:
         total_sum += torch.sum(x, dim=dims)
         nb_points += x.shape[0]
     mean = total_sum / nb_points
 
     # Computing the standard deviation
-    loader = get_dataloader(fed_dataset, train=True, kwargs=kwargs, kwargs_loader=kwargs_loader)
+    loader = get_dataloader(fed_dataset, train=True, kwargs_dataset=kwargs_dataset, kwargs_dataloader=kwargs_dataloader)
     sum_of_squared_error = 0
     for x, y in loader:
         dims = list(range(x.dim() - 1))
         sum_of_squared_error += torch.sum((x - mean).pow(2), dim=dims)
-    loader = get_dataloader(fed_dataset, train=False, kwargs=kwargs, kwargs_loader=kwargs_loader)
+    loader = get_dataloader(fed_dataset, train=False, kwargs_dataset=kwargs_dataset, kwargs_dataloader=kwargs_dataloader)
     for x, y in loader:
         sum_of_squared_error += torch.sum((x - mean).pow(2), dim=dims)
     std = torch.sqrt(sum_of_squared_error / nb_points)
@@ -223,10 +182,10 @@ def compute_mean_std(fed_dataset, kwargs, kwargs_loader):
     return mean, std
 
 
-def fit_scaler(fed_dataset, dataset_name, kwargs, kwargs_loader):
+def fit_scaler(fed_dataset, dataset_name, kwargs_dataset, kwargs_dataloader):
     # We normalize only if the data are tabular
     if INPUT_TYPE[dataset_name] == "tabular":
-        mean, std = compute_mean_std(fed_dataset, kwargs, kwargs_loader)
+        mean, std = compute_mean_std(fed_dataset, kwargs_dataset, kwargs_dataloader)
         return StandardScaler(mean=mean, std=std)
     return None
 
@@ -250,29 +209,29 @@ def get_dataset(dataset_name: str, batch_size: int, debug: bool,
 
     ipca_data = IncrementalPCA(n_components=PCA_NB_COMPONENTS)
     ipca_labels = IncrementalPCA(n_components=PCA_NB_COMPONENTS) if OUTPUT_TYPE[dataset_name] == "image" else None
-    kwargs_loader = dict(batch_size=batch_size)
+    kwargs_dataloader = dict(batch_size=batch_size)
 
     if dataset_name == "mnist":
         from torchvision import datasets
-        kwargs = dict(root='../DATASETS/MNIST', download=False, transform=transform)
-        kwargs_loader['shuffle'] = False
-        scaler = fit_scaler(datasets.MNIST, dataset_name, kwargs, kwargs_loader)
-        ipca_data, ipca_labels = fit_PCA_train_test(datasets.MNIST, ipca_data, ipca_labels, scaler, kwargs,
-                                                    kwargs_loader)
-        X, Y = get_processed_train_test_data(datasets.MNIST, dataset_name, ipca_data, ipca_labels, scaler, kwargs,
-                                             kwargs_loader)
+        kwargs_dataset = dict(root='../DATASETS/MNIST', download=False, transform=transform)
+        kwargs_dataloader['shuffle'] = False
+        scaler = fit_scaler(datasets.MNIST, dataset_name, kwargs_dataset, kwargs_dataloader)
+        ipca_data, ipca_labels = fit_PCA_for_train_and_test(datasets.MNIST, ipca_data, ipca_labels, scaler, kwargs_dataset,
+                                                            kwargs_dataloader)
+        X, Y = get_processed_train_test_data(datasets.MNIST, dataset_name, ipca_data, ipca_labels, scaler, kwargs_dataset,
+                                             kwargs_dataloader)
         return X, Y, False
 
     elif dataset_name == "fashion_mnist":
         from torchvision import datasets
         from torchvision import datasets
-        kwargs = dict(root='../DATASETS/FASHION_MNIST', download=False, transform=transform)
-        kwargs_loader['shuffle'] = False
-        scaler = fit_scaler(datasets.FashionMNIST, dataset_name, kwargs, kwargs_loader)
-        ipca_data, ipca_labels = fit_PCA_train_test(datasets.FashionMNIST, ipca_data, ipca_labels, scaler, kwargs,
-                                                    kwargs_loader)
+        kwargs_dataset = dict(root='../DATASETS/FASHION_MNIST', download=False, transform=transform)
+        kwargs_dataloader['shuffle'] = False
+        scaler = fit_scaler(datasets.FashionMNIST, dataset_name, kwargs_dataset, kwargs_dataloader)
+        ipca_data, ipca_labels = fit_PCA_for_train_and_test(datasets.FashionMNIST, ipca_data, ipca_labels, scaler, kwargs_dataset,
+                                                            kwargs_dataloader)
         data, labels = get_processed_train_test_data(datasets.FashionMNIST,  dataset_name, ipca_data, ipca_labels,
-                                                     scaler, kwargs, kwargs_loader)
+                                                     scaler, kwargs_dataset, kwargs_dataloader)
         return data, labels, False
 
     elif dataset_name == "camelyon16":
@@ -280,15 +239,15 @@ def get_dataset(dataset_name: str, batch_size: int, debug: bool,
         X, Y = [], []
         nb_of_client = 1 if debug else NB_CLIENTS[dataset_name]
         ipca_data = ipca_data if not debug else None
-        kwargs_loader['collate_fn'] = collate_fn
-        kwargs = dict(pooled=True, debug=debug)
-        scaler = fit_scaler(FedCamelyon16, dataset_name, kwargs, kwargs_loader)
-        ipca_data, ipca_labels = fit_PCA_train_test(FedCamelyon16, ipca_data, ipca_labels, scaler, kwargs,
-                                                    kwargs_loader)
+        kwargs_dataloader['collate_fn'] = collate_fn
+        kwargs_dataset = dict(pooled=True, debug=debug)
+        scaler = fit_scaler(FedCamelyon16, dataset_name, kwargs_dataset, kwargs_dataloader)
+        ipca_data, ipca_labels = fit_PCA_for_train_and_test(FedCamelyon16, ipca_data, ipca_labels, scaler, kwargs_dataset,
+                                                            kwargs_dataloader)
         for i in range(nb_of_client):
-            kwargs = dict(center=i, pooled=False, debug=debug)
+            kwargs_dataset = dict(center=i, pooled=False, debug=debug)
             data, labels = get_processed_train_test_data(FedCamelyon16, dataset_name, ipca_data, ipca_labels, scaler,
-                                                         kwargs, kwargs_loader)
+                                                         kwargs_dataset, kwargs_dataloader)
             X.append(data)
             Y.append(labels)
         # In debug mode, there is only 5 pictures from the first center.
@@ -301,14 +260,14 @@ def get_dataset(dataset_name: str, batch_size: int, debug: bool,
         import datasets
         from datasets.fed_heart_disease.dataset import FedHeartDisease
         X, Y = [], []
-        kwargs = dict(pooled=True)
-        scaler = fit_scaler(FedHeartDisease, dataset_name, kwargs, kwargs_loader)
-        ipca_data, ipca_labels = fit_PCA_train_test(FedHeartDisease, ipca_data, ipca_labels, scaler, kwargs,
-                                                    kwargs_loader)
+        kwargs_dataset = dict(pooled=True)
+        scaler = fit_scaler(FedHeartDisease, dataset_name, kwargs_dataset, kwargs_dataloader)
+        ipca_data, ipca_labels = fit_PCA_for_train_and_test(FedHeartDisease, ipca_data, ipca_labels, scaler, kwargs_dataset,
+                                                            kwargs_dataloader)
         for i in range(NB_CLIENTS[dataset_name]):
-            kwargs = dict(center=i, pooled=False)
+            kwargs_dataset = dict(center=i, pooled=False)
             data, labels = get_processed_train_test_data(FedHeartDisease, dataset_name, ipca_data, ipca_labels, scaler,
-                                                         kwargs, kwargs_loader)
+                                                         kwargs_dataset, kwargs_dataloader)
             X.append(data)
             Y.append(labels)
         return X, Y, True
@@ -316,13 +275,13 @@ def get_dataset(dataset_name: str, batch_size: int, debug: bool,
     elif dataset_name == "isic2019":
         from datasets.fed_isic2019.dataset import FedIsic2019
         X, Y = [], []
-        kwargs = dict(pooled=True)
-        scaler = fit_scaler(FedIsic2019, dataset_name, kwargs, kwargs_loader)
-        ipca_data, ipca_labels = fit_PCA_train_test(FedIsic2019, ipca_data, ipca_labels, scaler, kwargs, kwargs_loader)
+        kwargs_dataset = dict(pooled=True)
+        scaler = fit_scaler(FedIsic2019, dataset_name, kwargs_dataset, kwargs_dataloader)
+        ipca_data, ipca_labels = fit_PCA_for_train_and_test(FedIsic2019, ipca_data, ipca_labels, scaler, kwargs_dataset, kwargs_dataloader)
         for i in range(NB_CLIENTS[dataset_name]):
-            kwargs = dict(center=i, pooled=False)
+            kwargs_dataset = dict(center=i, pooled=False)
             data, labels = get_processed_train_test_data(FedIsic2019, dataset_name, ipca_data, ipca_labels, scaler,
-                                                         kwargs, kwargs_loader)
+                                                         kwargs_dataset, kwargs_dataloader)
             X.append(data)
             Y.append(labels)
         pickle_saver([X, Y, True], "{0}/pca".format(pca_folder))
@@ -331,13 +290,13 @@ def get_dataset(dataset_name: str, batch_size: int, debug: bool,
     elif dataset_name == "ixi":
         from datasets.fed_ixi.dataset import FedIXITiny
         X, Y = [], []
-        kwargs = dict(pooled=True)
-        scaler = fit_scaler(FedIXITiny, dataset_name, kwargs, kwargs_loader)
-        ipca_data, ipca_labels = fit_PCA_train_test(FedIXITiny, ipca_data, ipca_labels, scaler, kwargs, kwargs_loader)
+        kwargs_dataset = dict(pooled=True)
+        scaler = fit_scaler(FedIXITiny, dataset_name, kwargs_dataset, kwargs_dataloader)
+        ipca_data, ipca_labels = fit_PCA_for_train_and_test(FedIXITiny, ipca_data, ipca_labels, scaler, kwargs_dataset, kwargs_dataloader)
         for i in range(NB_CLIENTS[dataset_name]):
-            kwargs = dict(center=i, pooled=False)
+            kwargs_dataset = dict(center=i, pooled=False)
             data, labels = get_processed_train_test_data(FedIXITiny, dataset_name, ipca_data, ipca_labels, scaler,
-                                                         kwargs, kwargs_loader)
+                                                         kwargs_dataset, kwargs_dataloader)
             X.append(data)
             Y.append(labels)
         pickle_saver([X, Y, True], "{0}/pca".format(pca_folder))
@@ -346,13 +305,13 @@ def get_dataset(dataset_name: str, batch_size: int, debug: bool,
     elif dataset_name == "kits19":
         from datasets.fed_kits19.dataset import FedKits19
         X, Y = [], []
-        kwargs = dict(pooled=True)
-        scaler = fit_scaler(FedKits19, dataset_name, kwargs, kwargs_loader)
-        ipca_data, ipca_labels = fit_PCA_train_test(FedKits19, ipca_data, ipca_labels, scaler, kwargs, kwargs_loader)
+        kwargs_dataset = dict(pooled=True)
+        scaler = fit_scaler(FedKits19, dataset_name, kwargs_dataset, kwargs_dataloader)
+        ipca_data, ipca_labels = fit_PCA_for_train_and_test(FedKits19, ipca_data, ipca_labels, scaler, kwargs_dataset, kwargs_dataloader)
         for i in range(NB_CLIENTS[dataset_name]):
-            kwargs = dict(center=i, pooled=False)
+            kwargs_dataset = dict(center=i, pooled=False)
             data, labels = get_processed_train_test_data(FedKits19, dataset_name, ipca_data, ipca_labels, scaler,
-                                                         kwargs, kwargs_loader)
+                                                         kwargs_dataset, kwargs_dataloader)
             X.append(data)
             Y.append(labels)
         pickle_saver([X, Y, True], "{0}/pca".format(pca_folder))
@@ -361,16 +320,16 @@ def get_dataset(dataset_name: str, batch_size: int, debug: bool,
     elif dataset_name == "lidc_idri":
         from datasets.fed_lidc_idri.dataset import FedLidcIdri
         X, Y = [], []
-        kwargs = dict(pooled=True, debug=debug)
-        scaler = fit_scaler(FedLidcIdri, dataset_name, kwargs, kwargs_loader)
+        kwargs_dataset = dict(pooled=True, debug=debug)
+        scaler = fit_scaler(FedLidcIdri, dataset_name, kwargs_dataset, kwargs_dataloader)
         # nb_of_client = 1 if debug else NB_CLIENTS[dataset_name]
         ipca_data = ipca_data if not debug else None
         ipca_labels = ipca_labels if not debug else None
-        # ipca_data, ipca_labels = fit_PCA_train_test(FedLidcIdri, ipca_data, ipca_labels, scaler, kwargs, kwargs_loader)
+        # ipca_data, ipca_labels = fit_PCA_train_test(FedLidcIdri, ipca_data, ipca_labels, scaler, kwargs_dataset, kwargs_dataloader)
         for i in range(NB_CLIENTS[dataset_name]):
-            kwargs = dict(center=i, pooled=False, debug=debug)
+            kwargs_dataset = dict(center=i, pooled=False, debug=debug)
             data, labels = get_processed_train_test_data(FedLidcIdri, dataset_name, ipca_data, ipca_labels, scaler,
-                                                         kwargs, kwargs_loader)
+                                                         kwargs_dataset, kwargs_dataloader)
             X.append(data)
             Y.append(labels)
         pickle_saver([X, Y, True], "{0}/pca".format(pca_folder))
@@ -379,13 +338,13 @@ def get_dataset(dataset_name: str, batch_size: int, debug: bool,
     elif dataset_name == "tcga_brca":
         from datasets.fed_tcga_brca.dataset import FedTcgaBrca
         X, Y = [], []
-        kwargs = dict(pooled=True)
-        scaler = fit_scaler(FedTcgaBrca, dataset_name, kwargs, kwargs_loader)
-        ipca_data, ipca_labels = fit_PCA_train_test(FedTcgaBrca, ipca_data, ipca_labels, scaler, kwargs, kwargs_loader)
+        kwargs_dataset = dict(pooled=True)
+        scaler = fit_scaler(FedTcgaBrca, dataset_name, kwargs_dataset, kwargs_dataloader)
+        ipca_data, ipca_labels = fit_PCA_for_train_and_test(FedTcgaBrca, ipca_data, ipca_labels, scaler, kwargs_dataset, kwargs_dataloader)
         for i in range(NB_CLIENTS[dataset_name]):
-            kwargs = dict(center=i, pooled=False)
+            kwargs_dataset = dict(center=i, pooled=False)
             data, labels = get_processed_train_test_data(FedTcgaBrca, dataset_name, ipca_data, ipca_labels, scaler,
-                                                         kwargs, kwargs_loader)
+                                                         kwargs_dataset, kwargs_dataloader)
             X.append(data)
             Y.append(labels[:,1].reshape(-1, 1))
         # plot_distrib(Y, 0, 1)

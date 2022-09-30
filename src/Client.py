@@ -48,15 +48,7 @@ class Client:
         self.Y = Y
         self.Y_distribution = self.compute_Y_distribution(OUTPUT_TYPE[dataset_name])
 
-    def compute_TSNE(self, X: np.ndarray):
-        """Compute the TSNE representation of a dataset."""
-        print("Computing TSNE of client {0}".format(self.idx))
-        np.random.seed(25)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            tsne = TSNE(n_components=2, random_state=42)
-            embedded_data = tsne.fit_transform(X)
-        return embedded_data
+
 
     def compute_Y_distribution(self, labels_type: str) -> torch.FloatTensor:
         if labels_type == "discrete":

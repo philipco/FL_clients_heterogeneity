@@ -3,11 +3,14 @@ import math
 from typing import List
 
 import numpy as np
+from numpy import linalg as LA
 import ot
 from tqdm import tqdm
 
 from src.Client import ClientsNetwork, NB_CLUSTER_ON_CONTINUOUS_VAR
+from src.Data import Data, DataDecentralized
 from src.Distance import Distance
+from src.Metrics import Metrics
 
 
 def compute_KL_distance(distrib1: np.ndarray, distrib2: np.ndarray) -> float:
@@ -30,6 +33,54 @@ def sub_sample(distrib, nb_sample):
         return distrib
     idx = np.random.randint(distrib.shape[0], size=nb_sample)
     return distrib[idx, :]
+
+
+def reconstruction_error(estimator, X, y=None):
+    return LA.norm(X - estimator.inverse_transform(estimator.transform(X))) / len(X)
+
+
+def compute_PCA_error(PCA_fitted, distrib: np.ndarray):
+    return reconstruction_error(PCA_fitted, distrib)
+
+
+def compute_matrix_of_distances_on_features(used_distance, data: DataDecentralized, metrics: Metrics) -> Metrics:
+
+    print("Computing matrix of distances on features ...")
+    # output = getattr(data, attribute_name)
+    # print(output)
+
+    # Matrix of distance between each clients
+    distances_iid = np.zeros((data.nb_of_clients, data.nb_of_clients))
+    distances_heter = np.zeros((data.nb_of_clients, data.nb_of_clients))
+    for i in tqdm(range(data.nb_of_clients)):
+        for j in range(data.nb_of_clients):
+            distances_iid[i,j] = compute_PCA_error(data.PCA_fit_iid[i], data.features_iid[j])
+            # distances_iid[j,i] = distances_iid[i,j]
+
+            distances_heter[i, j] = compute_PCA_error(data.PCA_fit_heter[i], data.features_heter[j])
+            # distances_heter[j, i] = distances_heter[i, j]
+    metrics.add_distances(distances_iid, distances_heter)
+    return metrics
+
+def compute_matrix_of_distances_on_labels(used_distance, data: DataDecentralized, metrics: Metrics) -> Metrics:
+
+    print("Computing matrix of distances on labels ...")
+    # output = getattr(data, attribute_name)
+    # print(output)
+
+    # Matrix of distance between each clients
+    distances_iid = np.zeros((data.nb_of_clients, data.nb_of_clients))
+    distances_heter = np.zeros((data.nb_of_clients, data.nb_of_clients))
+    for i in tqdm(range(data.nb_of_clients)):
+        for j in range(data.nb_of_clients):
+            distances_iid[i,j] = used_distance(data.labels_iid_distrib[i], data.labels_iid_distrib[j])
+            # distances_iid[j,i] = distances_iid[i,j]
+
+            distances_heter[i, j] = used_distance(data.labels_heter_distrib[i], data.labels_heter_distrib[j])
+            # distances_heter[j, i] = distances_heter[i, j]
+    metrics.add_distances(distances_iid, distances_heter)
+    return metrics
+
 
 
 def compute_EM_distance(distrib1: np.ndarray, distrib2: np.ndarray, stochastic: bool) -> float:
@@ -55,6 +106,7 @@ def compute_EM_distance(distrib1: np.ndarray, distrib2: np.ndarray, stochastic: 
         # b = torch.ones(len(sub_distrib2)) / len(sub_distrib2)
         minibatch_emd.append(ot.emd2(a, b, cost_matrix))  # Wasserstein distance / EMD value
     return np.average(minibatch_emd)
+    # et si je n'averagais pas ?
 
 
 def compute_metrics_on_continuous_var(nb_clients: int, centralized_distribution: np.ndarray,
