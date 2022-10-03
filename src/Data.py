@@ -2,9 +2,11 @@
 from typing import List, Union, Any
 
 import numpy as np
-from sklearn.decomposition import PCA
+from sklearn.decomposition import IncrementalPCA
 
+from src.Constants import PCA_NB_COMPONENTS
 from src.Split import split_data
+from src.UtilitiesNumpy import fit_PCA
 
 
 class Data:
@@ -39,22 +41,40 @@ class Data:
         self.labels_heter_distrib = compute_Y_distribution(self.labels_heter)
 
 
-class DataDecentralized(Data):
+class DataCentralized(Data):
 
     def __init__(self, dataset_name: str, nb_points_by_clients: List[int], natural_split: bool,
                  features_iid: List[np.array], features_heter: List[np.array],
                  labels_iid: List[np.array], labels_heter: List[np.array]) -> None:
         super().__init__(dataset_name, nb_points_by_clients, natural_split, features_iid, features_heter, labels_iid,
                          labels_heter)
-        print("Fitting decentralized PCA on iid split.")
-        self.PCA_fit_iid = [PCA(n_components=10).fit(X) for X in self.features_iid]
-        print("Fitting decentralized PCA on heterogeneous split.")
-        self.PCA_fit_heter = [PCA(n_components=10).fit(X) for X in self.features_heter]
 
     def resplit_iid(self) -> None:
         super().resplit_iid()
-        self.PCA_fit_iid = [PCA(n_components=10).fit(X) for X in self.features_iid]
-        self.PCA_fit_heter = [PCA(n_components=10).fit(X) for X in self.features_heter]
+
+
+class DataDecentralized(Data):
+
+    def __init__(self, dataset_name: str, nb_points_by_clients: List[int], natural_split: bool,
+                 features_iid: List[np.array], features_heter: List[np.array],
+                 labels_iid: List[np.array], labels_heter: List[np.array], batch_size: int) -> None:
+        super().__init__(dataset_name, nb_points_by_clients, natural_split, features_iid, features_heter, labels_iid,
+                         labels_heter)
+        self.batch_size = batch_size
+        # TODO : do we choose to scale or not for PCA error ?
+        print("Fitting decentralized PCA on iid split.")
+        self.PCA_fit_iid = [fit_PCA(X, IncrementalPCA(n_components=PCA_NB_COMPONENTS), None, self.batch_size)
+                            for X in self.features_iid]
+        print("Fitting decentralized PCA on heterogeneous split.")
+        self.PCA_fit_heter = [fit_PCA(X, IncrementalPCA(n_components=PCA_NB_COMPONENTS), None, self.batch_size)
+                              for X in self.features_heter]
+
+    def resplit_iid(self) -> None:
+        super().resplit_iid()
+        self.PCA_fit_iid = [fit_PCA(X, IncrementalPCA(n_components=PCA_NB_COMPONENTS), None, self.batch_size)
+                            for X in self.features_iid]
+        self.PCA_fit_heter = [fit_PCA(X, IncrementalPCA(n_components=PCA_NB_COMPONENTS), None, self.batch_size)
+                              for X in self.features_heter]
 
 
 def compute_Y_distribution(labels: List[np.array]) -> np.array:

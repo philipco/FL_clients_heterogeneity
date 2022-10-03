@@ -51,7 +51,7 @@ def plot_distance(metrics: Metrics) -> None:
                          max(matrix_to_plot[1].flatten()))
 
     cmap = plt.cm.Reds
-    cmap.set_bad((204 / 255, 204 / 255, 204 / 255, 0.25))
+    cmap.set_bad((204 / 255, 204 / 255, 204 / 255, 1))
     kwargs = dict(origin='lower', vmin=one_to_one_min, vmax=one_to_one_max, aspect="equal", cmap=cmap)
 
     # We set the diagonal at nan.

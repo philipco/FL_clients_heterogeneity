@@ -18,6 +18,8 @@ OUTPUT_TYPE = {"mnist": "discrete", "fashion_mnist": "discrete",
 NB_CLIENTS = {"mnist": 10, "fashion_mnist": 10, "camelyon16": 2, "heart_disease": 4, "isic2019": 6,
               "ixi": 3, "kits19": 6, "lidc_idri": 5, "tcga_brca": 6}
 
+PCA_NB_COMPONENTS = 16
+
 TRANSFORM_MIST = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize((0.1307,), (0.3081,)),

@@ -12,12 +12,12 @@ from sklearn.decomposition import PCA, IncrementalPCA
 from torch.utils.data import DataLoader
 
 from src.Client import Client, ClientsNetwork
-from src.Constants import NB_CLIENTS, INPUT_TYPE, OUTPUT_TYPE, NB_LABELS
-from src.FeaturesLearner import ReshapeTransform
+from src.Constants import NB_CLIENTS, INPUT_TYPE, OUTPUT_TYPE, NB_LABELS, PCA_NB_COMPONENTS
 from src.PickleHandler import pickle_loader, pickle_saver
 from src.PytorchScaler import StandardScaler
 from src.Split import iid_split, dirichlet_split
 from src.Utilities import create_folder_if_not_existing, file_exist
+from src.UtilitiesPytorch import ReshapeTransform
 
 FLAMBY_PATH = '../FLamby'
 
@@ -27,7 +27,6 @@ sys.path.insert(0, FLAMBY_PATH + '/flamby')
 import datasets
 
 DIRICHLET_COEF = 0.5
-PCA_NB_COMPONENTS = 16
 
 
 def create_clients(nb_clients: int, data: np.ndarray, labels: np.ndarray, nb_labels: int, split: bool,

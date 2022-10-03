@@ -2,6 +2,42 @@
 import math
 
 import numpy as np
+from batchup import data_source
+from sklearn.decomposition import IncrementalPCA
+
+from src.Constants import PCA_NB_COMPONENTS
+
+
+def fit_PCA(features: np.array, ipca_data: IncrementalPCA, scaler, batch_size: int) -> IncrementalPCA:
+    ds = data_source.ArrayDataSource([features])
+    for x in ds.batch_iterator(batch_size=batch_size, shuffle=np.random.RandomState(12345)):
+        x = x[0]
+        if len(x.shape) > 2:
+            x = np.flatten(x, start_dim=1)
+        if scaler is not None:
+            x = scaler.transform(x)
+
+        # To fit the PCA we must have a number of elements bigger than the PCA dimension, those we must drop the last
+        # batch if it doesn't contain enough elements.
+        if ipca_data is not None and x.shape[0] >= PCA_NB_COMPONENTS:
+            ipca_data.partial_fit(x)
+    return ipca_data
+
+
+def compute_PCA(features: np.array, ipca_data: IncrementalPCA, scaler, batch_size: int) -> np.ndarray:
+    X, Y = [], []
+    ds = data_source.ArrayDataSource([features])
+    for x in ds.batch_iterator(batch_size=batch_size, shuffle=False):
+        x = x[0]
+        if len(x.shape) > 2:
+            x = np.flatten(x, start_dim=1)
+        if scaler is not None:
+            x = scaler.transform(x)
+        if ipca_data is not None:
+            X.append(ipca_data.transform(x))
+        else:
+            X.append(np.flatten(x, start_dim=1))
+    return np.concatenate(X)
 
 
 def remove_diagonal(distribution: np.array, symmetric_matrix) -> np.array:
