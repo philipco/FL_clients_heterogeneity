@@ -13,13 +13,14 @@ def get_dataloader(fed_dataset, train, kwargs_dataset, kwargs_dataloader):
     return DataLoader(dataset, **kwargs_dataloader)
 
 
-def get_element_from_dataloader(loader, X, Y):
+def get_element_from_dataloader(loader):
+    X, Y = [], []
     for x, y in loader:
         if len(x.shape) > 2:
             x = torch.flatten(x, start_dim=1)
         X.append(x)
         Y.append(y)
-    return X, Y
+    return np.concatenate(X), np.concatenate(Y)
 
 
 def get_data_from_pytorch(fed_dataset, kwargs_dataset, kwargs_dataloader) -> [List[np.array], List[np.array], bool]:
@@ -31,12 +32,37 @@ def get_data_from_pytorch(fed_dataset, kwargs_dataset, kwargs_dataloader) -> [Li
                             kwargs_dataloader=kwargs_dataloader)
 
     # Get all element from the dataloader.
-    X, Y = [], []
-    X, Y = get_element_from_dataloader(loader_train, X, Y)
-    X, Y = get_element_from_dataloader(loader_test, X, Y)
+    data_train, labels_train = get_element_from_dataloader(loader_train)
+    data_test, labels_test = get_element_from_dataloader(loader_test)
+    X = [np.concatenate([data_train, data_test])]
+    Y = [np.concatenate([labels_train, labels_test])]
 
     print("Train data shape:", X[0].shape)
     print("Test data shape:", Y[0].shape)
 
     natural_split = False
     return [np.concatenate(X)], [np.concatenate(Y)], natural_split
+
+
+def get_data_from_flamby(fed_dataset, nb_of_clients, kwargs_dataloader, debug: bool = False) \
+        -> [List[np.array], List[np.array], bool]:
+
+    X, Y = [], []
+    # kwargs_dataset = dict(pooled=True)
+    for i in range(nb_of_clients):
+        kwargs_dataset = dict(center=i, pooled=False, debug=debug)
+        loader_train = get_dataloader(fed_dataset, train=True, kwargs_dataset=kwargs_dataset,
+                                kwargs_dataloader=kwargs_dataloader)
+
+        loader_test = get_dataloader(fed_dataset, train=False, kwargs_dataset=kwargs_dataset,
+                                kwargs_dataloader=kwargs_dataloader)
+
+        # Get all element from the dataloader.
+        data_train, labels_train = get_element_from_dataloader(loader_train)
+        data_test, labels_test = get_element_from_dataloader(loader_test)
+
+        X.append(np.concatenate([data_train, data_test]))
+        Y.append(np.concatenate([labels_train, labels_test]))
+
+    natural_split = True
+    return X, Y, natural_split
