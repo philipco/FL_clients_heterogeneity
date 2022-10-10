@@ -1,24 +1,9 @@
 """Created by Constantin Philippenko, 29th September 2022."""
 import warnings
-from random import random
 from typing import List
 
 import numpy as np
 from sklearn.manifold import TSNE
-
-
-def split_data(features: List[np.array], labels: List[np.array], natural_split: bool, nb_of_clients: int):
-    if natural_split:
-        nb_points_by_clients = [len(l) for l in labels]
-        features_iid, labels_iid = iid_split(np.concatenate(features), np.concatenate(labels), nb_of_clients,
-                                             nb_points_by_clients)
-        features_heter, labels_heter = features, labels
-    else:
-        features, labels = np.concatenate(features), np.concatenate(labels)
-        nb_points_by_clients = np.array([len(features) // nb_of_clients for i in range(nb_of_clients)])
-        features_iid, labels_iid = iid_split(features, labels, nb_of_clients, nb_points_by_clients)
-        features_heter, labels_heter = iid_split(features, labels, nb_of_clients, nb_points_by_clients)
-    return features_iid, labels_iid, features_heter, labels_heter, nb_points_by_clients
 
 
 def iid_split(data: np.ndarray, labels: np.ndarray, nb_clients: int,
@@ -36,7 +21,45 @@ def iid_split(data: np.ndarray, labels: np.ndarray, nb_clients: int,
     return X, Y
 
 
-def dirichlet_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, dirichlet_coef: float) \
+def create_non_iid_split(features: List[np.array], labels: List[np.array], nb_clients: int,
+                         natural_split: bool) -> [List[np.ndarray], List[np.ndarray]]:
+    if natural_split:
+        return features, labels
+    return dirichlet_split(np.concatenate(features), np.concatenate(labels), nb_clients)
+
+
+def sort_and_partition_split(features: np.array, labels: np.array, nb_clients: int) \
+        -> [List[np.ndarray], List[np.ndarray]]:
+    unique_labels = np.unique(labels)
+    nb_of_split_for_one_label = int(np.ceil(2 * nb_clients / len(unique_labels)))
+
+    # We sort features by labels
+    sorted_features = []
+    sorted_labels = []
+    for label in unique_labels:
+        sorted_features.append(features[labels == label])
+        sorted_labels.append(labels[labels == label])
+
+    X, Y = [[] for i in range(nb_clients)], [[] for i in range(nb_clients)]
+    counter_client = 0
+    for i in range(len(unique_labels)):
+        size = len(sorted_labels[i])
+        features_split = np.split(sorted_features[i], [j * size // nb_of_split_for_one_label for j in range(1, nb_of_split_for_one_label)])
+        labels_split = np.split(sorted_labels[i], [j * size // nb_of_split_for_one_label for j in range(1, nb_of_split_for_one_label)])
+
+        for j in range(nb_of_split_for_one_label):
+            X[counter_client % nb_clients].append(features_split[j])
+            Y[counter_client % nb_clients].append(labels_split[j])
+            counter_client += 1
+
+    for idx_client in range(nb_clients):
+        X[idx_client] = np.concatenate((X[idx_client]))
+        Y[idx_client] = np.concatenate(Y[idx_client])
+
+    return X, Y
+
+
+def dirichlet_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, dirichlet_coef: float = 0.5) \
         -> [List[np.ndarray], List[np.ndarray]]:
     nb_labels = len(np.unique(labels)) # Here data is not yet split. Thus nb_labels is correct.
     X = [[] for i in range(nb_clients)]
@@ -44,18 +67,15 @@ def dirichlet_split(data: np.ndarray, labels: np.ndarray, nb_clients: int, diric
     for idx_label in range(nb_labels):
         proportions = np.random.dirichlet(np.repeat(dirichlet_coef, nb_clients))
         assert round(proportions.sum()) == 1, "The sum of proportion is not equal to 1."
-        last_idx = 0
-        N = len(labels[labels == idx_label])
-        for idx_client in range(nb_clients):
-            X[idx_client].append(data[labels == idx_label][last_idx:last_idx + int(proportions[idx_client] * N)])
-            Y[idx_client].append(labels[labels == idx_label][last_idx:last_idx + int(proportions[idx_client] * N)])
-            last_idx += int(proportions[idx_client] * N)
 
-            # If the client hasn't receive this kind of label we add at least one !
-            if len(X[idx_client][-1]) == 0:
-                random_idx = random.randint(0,len(data[labels == idx_label]) - 1)
-                X[idx_client][-1] = data[labels == idx_label][random_idx:random_idx+1]
-                Y[idx_client][-1] = labels[labels == idx_label][random_idx:random_idx+1]
+        N = len(labels[labels == idx_label])
+
+        split_indices = [np.sum([int(proportions[k] * N) for k in range(j)]) for j in range(1,nb_clients)]
+        features_split = np.split(data[labels == idx_label], split_indices)
+        labels_split = np.split(labels[labels == idx_label], split_indices)
+        for j in range(nb_clients):
+            X[j].append(features_split[j])
+            Y[j].append(labels_split[j])
 
     for idx_client in range(nb_clients):
         X[idx_client] = np.concatenate((X[idx_client]))
