@@ -8,10 +8,10 @@ from src.Utilities import get_project_root, open_plotted_matrix
 from src.UtilitiesNumpy import compute_entropy, remove_diagonal
 
 
-def print_latex_table(dataset_names):
+def print_latex_table(datasets_names):
     # dataset_names = ["camelyon16", "ixi", "tcga_brca", "kits19", "isic2019", "heart_disease"]
     string = ""
-    for name in dataset_names:
+    for name in datasets_names:
         string += name + " & "
     print(string)
 
@@ -20,7 +20,7 @@ def print_latex_table(dataset_names):
     entropy = []
 
     root = get_project_root()
-    for dataset_name in dataset_names:
+    for dataset_name in datasets_names:
         nb_points_by_clients = pickle_loader("{0}/pickle/{1}/processed_data/centralized".format(root, dataset_name)).nb_points_by_clients
         entropy.append(compute_entropy(nb_points_by_clients))
 
@@ -38,13 +38,13 @@ def print_latex_table(dataset_names):
     plot_metrics(X_max, X_mean, Y_max, Y_mean, entropy, datasets_name)
 
 
-def plot_metrics(X_max, X_mean, Y_max, Y_mean, entropy, datasets_name):
+def plot_metrics(X_max, X_mean, Y_max, Y_mean, entropy, datasets_names):
     width = 0.25
     fontsize = 12
 
     fig, ax1 = plt.subplots()
 
-    ind = np.arange(len(datasets_name))
+    ind = np.arange(len(datasets_names))
 
     greens = plt.cm.Greens
     reds = plt.cm.Reds
@@ -77,9 +77,9 @@ def plot_metrics(X_max, X_mean, Y_max, Y_mean, entropy, datasets_name):
     plt.savefig('{0}/{1}.pdf'.format("{0}/pictures".format(get_project_root()), "comparison"), format='pdf', bbox_inches='tight')
 
 
-def print_pvalue(dataset_names):
+def print_pvalue(datasets_names):
     string = ""
-    for name in dataset_names:
+    for name in datasets_names:
         string += name + " & "
     print(string)
 
@@ -87,7 +87,7 @@ def print_pvalue(dataset_names):
     entropy = []
 
     root = get_project_root()
-    for dataset_name in dataset_names:
+    for dataset_name in datasets_names:
         nb_points_by_clients = pickle_loader(
             "{0}/pickle/{1}/processed_data/centralized".format(root, dataset_name)).nb_points_by_clients
         entropy.append(compute_entropy(nb_points_by_clients))
@@ -108,16 +108,16 @@ def print_pvalue(dataset_names):
 
         Y_pvalues.append(p)
 
-    plot_pvalues(X_pvalues, Y_pvalues, entropy, dataset_names)
+    plot_pvalues(X_pvalues, Y_pvalues, entropy, datasets_names)
 
 
-def plot_pvalues(X_pvalues, Y_pvalues, entropy, datasets_name):
+def plot_pvalues(X_pvalues, Y_pvalues, entropy, datasets_names):
     width = 0.25
     fontsize = 12
 
     fig, ax1 = plt.subplots()
 
-    ind = np.arange(len(datasets_name))
+    ind = np.arange(len(datasets_names))
 
     greens = plt.cm.Greens
     reds = plt.cm.Reds
@@ -144,14 +144,14 @@ def plot_pvalues(X_pvalues, Y_pvalues, entropy, datasets_name):
     labels = [l.get_label() for l in legends]
     plt.legend(legends, labels, loc="best", fontsize=fontsize)
 
-    plt.xticks(ind + width / 2, datasets_name)
+    plt.xticks(ind + width / 2, datasets_names)
 
     plt.savefig('{0}/{1}.pdf'.format("{0}/pictures".format(get_project_root()), "pvalues"), format='pdf', bbox_inches='tight')
 
 if __name__ == '__main__':
 
-    datasets_name = ["heart_disease", "tcga_brca"]
+    datasets_names = ["heart_disease", "tcga_brca"]
 
     ### We print statistics on distance in a latex table.
-    print_latex_table(datasets_name)
-    print_pvalue(datasets_name)
+    print_latex_table(datasets_names)
+    print_pvalue(datasets_names)

@@ -8,7 +8,6 @@ from src.Constants import TRANSFORM_MIST, NB_CLIENTS
 from src.DataLoader import get_data_from_pytorch, get_data_from_flamby
 from src.DataProcessing import decentralized_processing_of_data, centralized_processing_of_data
 from src.Metrics import Metrics
-from src.Split import create_non_iid_split
 from src.Utilities import get_project_root
 from src.plotting.PlotDistances import plot_distance
 from src.plotting.PrintStatistics import print_latex_table, print_pvalue
@@ -31,20 +30,17 @@ from datasets.fed_tcga_brca.dataset import FedTcgaBrca
 
 batch_size = 256
 dataset_name = "tcga_brca"
+nb_of_clients = NB_CLIENTS[dataset_name]
 
 if __name__ == '__main__':
 
     ### We the dataset naturally splitted or not.
-    # X, Y, natural_split = get_data_from_pytorch(datasets.MNIST,
+    # X, Y, natural_split = get_data_from_pytorch(datasets.MNIST, nb_of_clients
     #                                             kwargs_dataset = dict(root='../../DATASETS/MNIST', download=False, transform=TRANSFORM_MIST),
     #                                             kwargs_dataloader = dict(batch_size=batch_size, shuffle=False))
 
-    X, Y, natural_split = get_data_from_flamby(FedTcgaBrca, NB_CLIENTS[dataset_name],
+    X, Y, natural_split = get_data_from_flamby(FedTcgaBrca, nb_of_clients,
                                                kwargs_dataloader=dict(batch_size=batch_size, shuffle=False))
-
-    ### We generate a non-iid datasplit if it's not already done.
-    nb_of_clients = NB_CLIENTS[dataset_name]
-    X, Y = create_non_iid_split(X, Y, nb_of_clients, natural_split)
 
     ### We process the data in a centralized or decentralized way.
     data_centralized = centralized_processing_of_data(dataset_name, X, Y, batch_size, nb_of_clients)
@@ -55,7 +51,7 @@ if __name__ == '__main__':
     metrics_EM = Metrics(dataset_name, "EM", data_centralized.nb_of_clients, data_centralized.nb_points_by_clients)
     metrics_TV = Metrics(dataset_name, "TV", data_centralized.nb_of_clients, data_centralized.nb_points_by_clients)
 
-    for i in range(4):
+    for i in range(50):
         ### We compute the distance between clients.
         compute_matrix_of_distances(function_to_use_to_compute_PCA_error, data_decentralized, metrics_PCA)
         compute_matrix_of_distances(function_to_use_to_compute_EM, data_centralized, metrics_EM)
@@ -71,6 +67,6 @@ if __name__ == '__main__':
     plot_distance(metrics_TV)
 
     ### We print statistics on distance in a latex table.
-    # Better to it in PrintStatistics with all the datasets !
+    # Better to do it in PrintStatistics with all the datasets !
     print_latex_table([dataset_name])
     print_pvalue([dataset_name])

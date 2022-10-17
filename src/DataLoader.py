@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from src.Constants import NB_CLIENTS
+from src.Split import create_non_iid_split
 
 
 def get_dataloader(fed_dataset, train, kwargs_dataset, kwargs_dataloader):
@@ -23,7 +24,8 @@ def get_element_from_dataloader(loader):
     return np.concatenate(X), np.concatenate(Y)
 
 
-def get_data_from_pytorch(fed_dataset, kwargs_dataset, kwargs_dataloader) -> [List[np.array], List[np.array], bool]:
+def get_data_from_pytorch(fed_dataset, nb_of_clients, kwargs_dataset,
+                          kwargs_dataloader) -> [List[np.array], List[np.array], bool]:
 
     # Get dataloader for train/test.
     loader_train = get_dataloader(fed_dataset, train=True, kwargs_dataset=kwargs_dataset,
@@ -41,7 +43,11 @@ def get_data_from_pytorch(fed_dataset, kwargs_dataset, kwargs_dataloader) -> [Li
     print("Test data shape:", Y[0].shape)
 
     natural_split = False
-    return [np.concatenate(X)], [np.concatenate(Y)], natural_split
+    X, Y = [np.concatenate(X)], [np.concatenate(Y)],
+
+    ### We generate a non-iid datasplit if it's not already done.
+    X, Y = create_non_iid_split(X, Y, nb_of_clients, natural_split)
+    return X, Y, natural_split
 
 
 def get_data_from_flamby(fed_dataset, nb_of_clients, kwargs_dataloader, debug: bool = False) \
@@ -66,4 +72,7 @@ def get_data_from_flamby(fed_dataset, nb_of_clients, kwargs_dataloader, debug: b
         Y.append(np.concatenate([labels_train, labels_test]))
 
     natural_split = True
+
+    ### We generate a non-iid datasplit if it's not already done.
+    X, Y = create_non_iid_split(X, Y, nb_of_clients, natural_split)
     return X, Y, natural_split
