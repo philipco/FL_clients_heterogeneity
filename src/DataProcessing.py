@@ -9,7 +9,7 @@ from src.Constants import PCA_NB_COMPONENTS
 from src.Data import DataDecentralized, DataCentralized
 from src.PickleHandler import pickle_saver
 from src.Split import iid_split
-from src.Utilities import create_folder_if_not_existing
+from src.Utilities import create_folder_if_not_existing, get_project_root
 from src.UtilitiesNumpy import fit_PCA, compute_PCA
 
 
@@ -22,8 +22,9 @@ def decentralized_processing_of_data(dataset_name: str, features: List[np.array]
     data = DataDecentralized(dataset_name, nb_points_by_clients, features_iid, features,
                              labels_iid, labels, batch_size)
 
-    create_folder_if_not_existing("pickle/{0}/processed_data".format(dataset_name))
-    pickle_saver(data, "pickle/{0}/processed_data/decentralized".format(dataset_name))
+    root = get_project_root()
+    create_folder_if_not_existing("{0}/pickle/{0}/processed_data".format(root, dataset_name))
+    pickle_saver(data, "{0}/pickle/{0}/processed_data/decentralized".format(root, dataset_name))
 
     return data
 
@@ -43,7 +44,8 @@ def centralized_processing_of_data(dataset_name: str, features: List[np.array], 
 
     data = DataCentralized(dataset_name, nb_points_by_clients, features_iid, features, labels_iid, labels)
 
-    create_folder_if_not_existing("pickle/{0}/processed_data".format(dataset_name))
-    pickle_saver(data, "pickle/{0}/processed_data/centralized".format(dataset_name))
+    root = get_project_root()
+    create_folder_if_not_existing("{0}/pickle/{1}/processed_data".format(root, dataset_name))
+    pickle_saver(data, "{0}/pickle/{1}/processed_data/centralized".format(root, dataset_name))
 
     return data

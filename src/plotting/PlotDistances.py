@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from sklearn.preprocessing import StandardScaler
 
 from src.Metrics import Metrics
-from src.Utilities import create_folder_if_not_existing
+from src.Utilities import create_folder_if_not_existing, get_project_root
 from src.UtilitiesNumpy import remove_diagonal, create_matrix_with_zeros_diagonal_from_array
 
 matplotlib.rcParams.update({
@@ -32,8 +32,6 @@ def scaling(caliber, matrix_to_plot: List[np.array], scaler):
 
 
 def plot_distance(metrics: Metrics) -> None:
-    
-    # if distance.is_empty(): return
 
     fig, axes = plt.subplots(1, 2)
 
@@ -46,8 +44,6 @@ def plot_distance(metrics: Metrics) -> None:
 
     if True:
         print("Standard scaling before plotting ...")
-        # matrix_to_plot = scaling(np.array([remove_diagonal(matrix_to_plot[0], symmetric_matrix=False)]).reshape(-1, 1),
-        #                          matrix_to_plot, StandardScaler())
         benchmark_for_scaling = np.array(remove_diagonal(matrix_to_plot[0], symmetric_matrix=False)).reshape(-1, 1)
         matrix_to_plot = scaling(benchmark_for_scaling, matrix_to_plot, StandardScaler())
 
@@ -87,8 +83,6 @@ def plot_distance(metrics: Metrics) -> None:
                 yticks.append(y_non_iid + size_y / 2)
         xticks.append(x_non_iid + size_x / 2)
         x_non_iid += size_x
-    # axes[0].set_title(label=TITLES[0])
-    # axes[1].set_title(label=TITLES[1])
 
     for ax in axes[:2]:
         ax.set_ylim(0, metrics.nb_of_clients)
@@ -97,19 +91,15 @@ def plot_distance(metrics: Metrics) -> None:
         ax.set_xticks(xticks)
         ax.set_xticklabels(clients_order, fontsize=15)
         ax.set_yticklabels(clients_order, fontsize=15)
-        # ax.set_xlabel("Client index")
 
-    cbar = fig.colorbar(im1, ax=axes[:], shrink=0.5)  # , format=FuncFormatter(fmt))
+    cbar = fig.colorbar(im1, ax=axes[:], shrink=0.5)
     cbar.formatter.set_powerlimits((0, 0))
 
-    # axes[1].get_yaxis().set_visible(False)
-    # plt.suptitle("{0} for {1}".format(suptitle, self.metrics_folder.split("/")[-1]), fontsize='xx-large',
-    #              weight='extra bold')
-
-    create_folder_if_not_existing('pictures/{0}'.format(metrics.dataset_name))
-    plt.savefig('pictures/{0}/{1}.pdf'.format(metrics.dataset_name, metrics.distance_name),
+    root = get_project_root()
+    create_folder_if_not_existing('{0}/pictures/{1}'.format(root, metrics.dataset_name))
+    plt.savefig('{0}/pictures/{1}/{2}.pdf'.format(root, metrics.dataset_name, metrics.distance_name),
                 bbox_inches='tight', dpi=600)
-    np.savetxt('pictures/{0}/{1}-iid.txt'.format(metrics.dataset_name, metrics.distance_name),
+    np.savetxt('{0}/pictures/{1}/{2}-iid.txt'.format(root, metrics.dataset_name, metrics.distance_name),
                matrix_to_plot[0], delimiter=',')
-    np.savetxt('pictures/{0}/{1}-heter.txt'.format(metrics.dataset_name, metrics.distance_name),
+    np.savetxt('{0}/pictures/{1}/{2}-heter.txt'.format(root, metrics.dataset_name, metrics.distance_name),
                matrix_to_plot[1], delimiter=',')

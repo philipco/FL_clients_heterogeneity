@@ -18,7 +18,6 @@ class Data:
         self.dataset_name = dataset_name
         self.nb_points_by_clients = nb_points_by_clients
         self.nb_of_clients = len(features_heter)
-        # self.natural_split = natural_split
 
         self.features_iid = features_iid
         self.features_heter = features_heter
