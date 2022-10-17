@@ -48,9 +48,10 @@ def get_data_from_flamby(fed_dataset, nb_of_clients, kwargs_dataloader, debug: b
         -> [List[np.array], List[np.array], bool]:
 
     X, Y = [], []
-    # kwargs_dataset = dict(pooled=True)
     for i in range(nb_of_clients):
-        kwargs_dataset = dict(center=i, pooled=False, debug=debug)
+        kwargs_dataset = dict(center=i, pooled=False)
+        if debug:
+            kwargs_dataset['debug'] = True
         loader_train = get_dataloader(fed_dataset, train=True, kwargs_dataset=kwargs_dataset,
                                 kwargs_dataloader=kwargs_dataloader)
 

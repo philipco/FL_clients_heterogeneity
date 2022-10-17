@@ -12,32 +12,32 @@ from src.Split import create_non_iid_split
 from src.plotting.PlotDistances import plot_distance
 
 # TODO
-# 1. Implement non-iid split with fixed size.
-# 2. Make heart disease identical to old results.
+# 2. Make heartdisease/tcga_brca identical to old results.
 # 3. Make isic2019 work
 
 FLAMBY_PATH = '../../FLamby'
 
 sys.path.insert(0, FLAMBY_PATH)
 import flamby
-# sys.path.insert(0, FLAMBY_PATH + '/flamby')
-# import datasets
-#
-# from datasets.fed_heart_disease.dataset import FedHeartDisease
-# from datasets.fed_isic2019.dataset import FedIsic2019
+sys.path.insert(0, FLAMBY_PATH + '/flamby')
+import datasets
+
+from datasets.fed_heart_disease.dataset import FedHeartDisease
+from datasets.fed_isic2019.dataset import FedIsic2019
+from datasets.fed_tcga_brca.dataset import FedTcgaBrca
 
 batch_size = 256
-dataset_name = "mnist"
+dataset_name = "heart_disease"
 
 if __name__ == '__main__':
 
     ### We the dataset naturally splitted or not.
-    X, Y, natural_split = get_data_from_pytorch(datasets.MNIST,
-                                                kwargs_dataset = dict(root='../../DATASETS/MNIST', download=False, transform=TRANSFORM_MIST),
-                                                kwargs_dataloader = dict(batch_size=batch_size, shuffle=False))
+    # X, Y, natural_split = get_data_from_pytorch(datasets.MNIST,
+    #                                             kwargs_dataset = dict(root='../../DATASETS/MNIST', download=False, transform=TRANSFORM_MIST),
+    #                                             kwargs_dataloader = dict(batch_size=batch_size, shuffle=False))
 
-    # X, Y, natural_split = get_data_from_flamby(FedHeartDisease, NB_CLIENTS[dataset_name],
-    #                                            kwargs_dataloader=dict(batch_size=batch_size, shuffle=False))
+    X, Y, natural_split = get_data_from_flamby(FedHeartDisease, NB_CLIENTS[dataset_name],
+                                               kwargs_dataloader=dict(batch_size=batch_size, shuffle=False))
 
     ### We generate a non-iid datasplit if it's not already done.
     nb_of_clients = NB_CLIENTS[dataset_name]
@@ -60,8 +60,9 @@ if __name__ == '__main__':
 
         ### We need to resplit the iid dataset.
         data_decentralized.resplit_iid()
+        data_centralized.resplit_iid()
 
     ### We print the distances.
     plot_distance(metrics_PCA)
-    plot_distance(metrics_TV)
     plot_distance(metrics_EM)
+    plot_distance(metrics_TV)

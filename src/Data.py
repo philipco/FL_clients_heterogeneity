@@ -57,20 +57,20 @@ class DataDecentralized(Data):
                  batch_size: int) -> None:
         super().__init__(dataset_name, nb_points_by_clients, features_iid, features_heter, labels_iid, labels_heter)
         self.batch_size = batch_size
+        dim = self.features_heter[0].shape[1]
+        self.pca_nb_components = PCA_NB_COMPONENTS if dim > PCA_NB_COMPONENTS else dim // 2
         # TODO : do we choose to scale or not for PCA error ?
         print("Fitting decentralized PCA on iid split.")
-        self.PCA_fit_iid = [fit_PCA(X, IncrementalPCA(n_components=PCA_NB_COMPONENTS), None, self.batch_size)
+        self.PCA_fit_iid = [fit_PCA(X, IncrementalPCA(n_components=self.pca_nb_components), None, self.batch_size)
                             for X in self.features_iid]
         print("Fitting decentralized PCA on heterogeneous split.")
-        self.PCA_fit_heter = [fit_PCA(X, IncrementalPCA(n_components=PCA_NB_COMPONENTS), None, self.batch_size)
+        self.PCA_fit_heter = [fit_PCA(X, IncrementalPCA(n_components=self.pca_nb_components), None, self.batch_size)
                               for X in self.features_heter]
 
     def resplit_iid(self) -> None:
         super().resplit_iid()
-        self.PCA_fit_iid = [fit_PCA(X, IncrementalPCA(n_components=PCA_NB_COMPONENTS), None, self.batch_size)
+        self.PCA_fit_iid = [fit_PCA(X, IncrementalPCA(n_components=self.pca_nb_components), None, self.batch_size)
                             for X in self.features_iid]
-        # self.PCA_fit_heter = [fit_PCA(X, IncrementalPCA(n_components=PCA_NB_COMPONENTS), None, self.batch_size)
-        #                       for X in self.features_heter]
 
 
 def compute_Y_distribution(labels: List[np.array]) -> np.array:

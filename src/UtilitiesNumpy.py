@@ -10,16 +10,20 @@ from src.Constants import PCA_NB_COMPONENTS
 
 def fit_PCA(features: np.array, ipca_data: IncrementalPCA, scaler, batch_size: int) -> IncrementalPCA:
     ds = data_source.ArrayDataSource([features])
-    for x in ds.batch_iterator(batch_size=batch_size, shuffle=np.random.RandomState(12345)):
+    for x in ds.batch_iterator(batch_size=batch_size, shuffle=False):
         x = x[0]
         if len(x.shape) > 2:
             x = np.flatten(x, start_dim=1)
         if scaler is not None:
             x = scaler.transform(x)
 
+        # If there is less features in the dataset than the wished numbers of PCA components, we return None.
+        if x.shape[1] <= ipca_data.n_components:
+            return None
+
         # To fit the PCA we must have a number of elements bigger than the PCA dimension, those we must drop the last
         # batch if it doesn't contain enough elements.
-        if ipca_data is not None and x.shape[0] >= PCA_NB_COMPONENTS:
+        if ipca_data is not None and x.shape[0] >= ipca_data.n_components:
             ipca_data.partial_fit(x)
     return ipca_data
 
@@ -36,7 +40,7 @@ def compute_PCA(features: np.array, ipca_data: IncrementalPCA, scaler, batch_siz
         if ipca_data is not None:
             X.append(ipca_data.transform(x))
         else:
-            X.append(np.flatten(x, start_dim=1))
+            X.append(x) # TODO reshape : .reshape(-1, x.shape[0] * x.shape[1]))
     return np.concatenate(X)
 
 

@@ -1,6 +1,7 @@
 """Created by Constantin Philippenko, 30th September 2022."""
 from typing import List
 
+import matplotlib
 import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.preprocessing import StandardScaler
@@ -9,6 +10,13 @@ from src.Metrics import Metrics
 from src.Utilities import create_folder_if_not_existing
 from src.UtilitiesNumpy import remove_diagonal, create_matrix_with_zeros_diagonal_from_array
 
+matplotlib.rcParams.update({
+    "pgf.texsystem": "pdflatex",
+    'font.family': 'serif',
+    'text.usetex': True,
+    'pgf.rcfonts': False,
+    'text.latex.preamble': r'\usepackage{amsfonts}'
+})
 
 def scaling(caliber, matrix_to_plot: List[np.array], scaler):
     # transform = scaler.fit_transform(caliber)
