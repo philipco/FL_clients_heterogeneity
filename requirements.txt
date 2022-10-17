@@ -1,8 +1,8 @@
+scipy>=1.9.0
 numpy
 matplotlib>=3.4
 tqdm
-scipy>=1.6
-pytorch>=1.10.2
+pytorch  # >=1.10.2
 torchvision # Otherwise issue with Pillow
 Pillow
 tensorflow
@@ -13,13 +13,13 @@ scikit-learn
 seaborn
 psutil
 pandas
+batchup
 
 tabulate
 
 # Required by Flamby
 albumentations
-efficientnet_pytorch
 lifelines
-numai
-nnunet
-statmodels
+
+# But not in conda library
+
